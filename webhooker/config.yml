@@ -1,69 +1,135 @@
-# Server configuration
+# Complete configuration file for MR Sync System
+# Version: 1.0
+# Last updated: 2024-12-21
+
+#-----------------------------------------------
+# Server Configuration
+#-----------------------------------------------
 server:
-  host: "0.0.0.0"
+  # Host address for the webhook server
+  # Use "0.0.0.0" to listen on all interfaces
+  host: '0.0.0.0'
+
+  # Port number for incoming webhook requests
+  # Default: 8000
   port: 8000
 
-# GitLab configuration
+#-----------------------------------------------
+# GitLab Configuration
+#-----------------------------------------------
 gitlab:
-  url: ""
-  token: ""
+  # Your GitLab instance URL
+  # Example: https://gitlab.company.com
+  url: ''
 
-# Logging configuration
+  # GitLab access token with API permissions
+  # Required scopes: api, read_repository, write_repository
+  token: ''
+
+#-----------------------------------------------
+# Logging Configuration
+#-----------------------------------------------
 logging:
-  level: "info"  # debug, info, warning, error
-  format: "%(asctime)s - %(levelname)s - %(message)s"  # optional, default format
+  # Log level: debug, info, warning, error
+  # Recommended: info for production
+  level: 'info'
 
-# Merge request configuration
+  # Log message format
+  # Available variables: asctime, levelname, message
+  format: '%(asctime)s - %(levelname)s - %(message)s'
+
+  # Log file location
+  # Rotated daily with 7-day retention
+  file: 'app.log'
+
+#-----------------------------------------------
+# Merge Request Configuration
+#-----------------------------------------------
 merge_request:
-  # Branches that trigger automatic merge request creation
-  # If empty - no branches will be processed
+  # List of branches that will trigger sync MR creation
+  # Only MRs targeting these branches will be processed
   trigger_branches:
     - release
 
-  # Postfix to add to the duplicated merge request title
-  title_postfix: "(to main)"
+  # Suffix added to sync MR titles
+  # Helps identify automated MRs
+  title_postfix: '(to main)'
 
-  # Postfix for new branch names
-  branch_postfix: "-to-main"
+  # Suffix added to new branch names
+  # Used for creating sync branches
+  branch_postfix: '-to-main'
 
-  # Option to enable/disable automatic source branch deletion for all created MRs
+  # Whether to delete source branch after merge
+  # Recommended: true for cleanup
   auto_delete_source: true
 
-  # Actions that trigger webhook processing
+  # Webhook actions that trigger processing
+  # Available: open, update, merge, close
   actions:
     - open
 
-  # Labels configuration with colors
+  # Labels to be applied to sync MRs
+  # Used for tracking and filtering
   labels:
-    - name: "mr-syncer-was-here"
-      color: "8B4513"
+    - name: 'mr-syncer-was-here'
+      color: '8B4513' # Brown color in hex
 
-# Message templates
+#-----------------------------------------------
+# Message Templates Configuration
+#-----------------------------------------------
 templates:
-  # Template for new MR comment
-  mr_comment: |
-    # Automatic Merge Request Created
-    ## 🎯 Created MR
-    - **Number**: !{mr.iid}
-    - **From**: `{new_branch_name}`
-    - **To**: `{default_branch}`
-    ## 👋 Hey, @{author_username}!
-    I've created an MR to sync your changes with the main branch.
-    ## ⚡️ Action Steps
-    1. Wait for CI/CD to pass on MR
-    2. Merge current MR first
-    3. After successful merge, proceed with new MR !{mr.iid}
-    ## 🔍 Details
-    - MR created automatically
-    - Original MR: !{original_mr_iid}
-    - Reviewers: {reviewers}
-    /cc {reviewers_mentions}
+  # Template for comment added to source/original MR
+  # Variables:
+  # - {mr.iid}: New MR ID
+  # - {new_branch_name}: Created branch name
+  # - {default_branch}: Target branch
+  # - {author_username}: Original MR author
+  # - {reviewers}: List of reviewers
+  # - {reviewers_mentions}: Reviewer GitLab mentions
+  source_mr_comment: |
+    # 🔄 Sync MR Created Successfully
 
-  # Template for existing MR notification
-  existing_mr: |
-    # Note: Default Branch Merge Request Already Exists
-    An existing merge request was found:
-    - Existing MR: !{mr_iid}
-    - Source Branch: `{source_branch}`
-    - Target Branch: `{target_branch}`
-    *No new merge request was created.*
+    ## 📋 New MR Details
+    - MR Number: !{mr.iid}
+    - Source Branch: `{new_branch_name}`
+    - Target Branch: `{default_branch}`
+
+    ## 🎯 Next Steps
+    1. Complete review of current MR
+    2. Ensure all tests pass here
+    3. Merge this MR first
+    4. Then proceed with sync MR !{mr.iid}
+
+    ## 👥 Team Coordination
+    - Original Author: @{author_username}
+    - Current Reviewers: {reviewers}
+
+    {reviewers_mentions}
+
+  # Template for description in target/sync MR
+  # Variables:
+  # - {original_mr_url}: URL to source MR
+  # - {source_branch}: Original source branch
+  # - {target_branch}: Original target branch
+  # - {original_description}: Source MR description
+  target_mr_comment: |
+    # 🔄 Code Sync Merge Request
+
+    ## 📌 Important Notice
+    This is an automated sync MR created to ensure code consistency across branches.
+
+    ## 🔗 Reference
+    - Original MR: {original_mr_url}
+    - Branch to sync from: `{source_branch}`
+    - Target branch: `{target_branch}`
+
+    ## ✅ Merge Requirements
+    1. Original MR must be merged first
+    2. All CI/CD checks must pass
+    3. Resolve any merge conflicts if present
+
+    ## 📝 Additional Context
+    {original_description}
+
+    ## ⚡ Automation Note
+    > This MR was automatically created by MR Sync System to help maintain code consistency
