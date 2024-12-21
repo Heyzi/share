@@ -5,8 +5,8 @@ server:
 
 # GitLab configuration
 gitlab:
-  url: "gitlab_url"
-  token: "23"
+  url: ""
+  token: ""
 
 # Logging configuration
 logging:
@@ -31,16 +31,12 @@ merge_request:
 
   # Actions that trigger webhook processing
   actions:
-    - create
+    - open
 
   # Labels configuration with colors
   labels:
-    - name: "to-default"
-      color: "#2EA44F"
-    - name: "mr-sync-success"
-      color: "#36B37E"
-    - name: "mr-sync-error"
-      color: "#FF5630"
+    - name: "mr-syncer-was-here"
+      color: "8B4513"
 
 # Message templates
 templates:

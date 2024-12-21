@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import gitlab
 import yaml
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from gitlab.exceptions import GitlabError
 
 # Load configuration file
@@ -43,7 +45,10 @@ class MergeRequestEvent(BaseModel):
     object_kind: str
     project: dict
     object_attributes: dict
-    user: Optional[dict]
+    user: Optional[dict] = None
+
+    class Config:
+        extra = "allow"
 
 def ensure_labels_exist(project, config_labels: List[dict]):
     """
@@ -55,22 +60,28 @@ def ensure_labels_exist(project, config_labels: List[dict]):
 
         for label_config in config_labels:
             name = label_config['name']
-            color = label_config['color'].lstrip('#')  # Remove # from color
+            color = label_config['color']
+            if not color.startswith('#'):
+                color = f"#{color}"
 
-            if name in existing_labels:
-                label = existing_labels[name]
-                if label.color != color:
-                    label.color = color
-                    label.save()
-                    logger.info(f"Updated color for label '{name}' to {color}")
-            else:
-                project.labels.create({
-                    'name': name,
-                    'color': color
-                })
-                logger.info(f"Created new label '{name}' with color {color}")
+            try:
+                if name in existing_labels:
+                    label = existing_labels[name]
+                    if label.color != color:
+                        label.color = color
+                        label.save()
+                else:
+                    project.labels.create({
+                        'name': name,
+                        'color': color,
+                        'description': label_config.get('description', '')
+                    })
+            except GitlabError as e:
+                logger.error(f"Failed to manage label '{name}': {e}")
+                continue
+
     except GitlabError as e:
-        logger.error(f"Failed to manage labels: {e}")
+        logger.error(f"Failed to list labels: {e}")
         raise
 
 def get_label_names_from_config(config: dict) -> List[str]:
@@ -95,25 +106,42 @@ def format_template(template: str, **kwargs) -> str:
         logger.error(f"Missing template variable: {e}")
         return template
 
-def add_error_label(project, mr_iid: int):
-    """Helper function to add error label and remove success label from MR"""
+def update_mr_labels(project, mr_iid: int, success: bool = True):
+    """Helper function to update MR labels based on sync status"""
     try:
         mr = project.mergerequests.get(mr_iid)
         current_labels = mr.labels
 
-        # Remove success label if exists
+        # Remove both status labels first
         if "mr-sync-success" in current_labels:
             current_labels.remove("mr-sync-success")
+        if "mr-sync-error" in current_labels:
+            current_labels.remove("mr-sync-error")
 
-        # Add error label if not exists
-        if "mr-sync-error" not in current_labels:
-            current_labels.append("mr-sync-error")
+        # Add appropriate status label
+        current_labels.append("mr-sync-success" if success else "mr-sync-error")
 
         mr.labels = current_labels
         mr.save()
-        logger.info(f"Updated labels for MR {mr_iid} (added error, removed success)")
     except GitlabError as e:
         logger.error(f"Failed to update labels for MR {mr_iid}: {e}")
+
+@app.post("/webhook/debug")
+async def webhook_debug(request: Request):
+    """Endpoint for debugging webhook payloads"""
+    body = await request.json()
+    logger.info(f"Debug webhook received: {body}")
+    return {"status": "ok", "payload": body}
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    body = await request.json()
+    logger.error(f"Validation error: {exc.errors()}")
+    logger.error(f"Request body: {body}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": body}
+    )
 
 @app.post("/webhook", status_code=200)
 async def webhook_receiver(event: MergeRequestEvent):
@@ -125,7 +153,6 @@ async def webhook_receiver(event: MergeRequestEvent):
         logger.info(f"Received webhook: {event.object_kind} for project {event.project.get('id')}")
 
         if event.object_kind != 'merge_request':
-            logger.warning(f"Invalid webhook type: {event.object_kind}")
             return
 
         # Extract MR details early
@@ -143,62 +170,60 @@ async def webhook_receiver(event: MergeRequestEvent):
 
         # Early return for non-configured actions
         if action not in config['merge_request']['actions']:
-            logger.info(f"Skipping merge request: action {action} not in configured actions")
             return
 
         # Get project and ensure labels exist
         try:
             project = gl.projects.get(project_id)
-            default_branch = project.default_branch
+            default_branch = project.attributes['default_branch']
 
             # Ensure all configured labels exist with correct colors
             if 'labels' in config['merge_request']:
-                ensure_labels_exist(project, config['merge_request']['labels'])
+                try:
+                    ensure_labels_exist(project, config['merge_request']['labels'])
+                except GitlabError as e:
+                    logger.error(f"Failed to ensure labels exist: {e}")
+                    update_mr_labels(project, original_mr_iid, success=False)
+                    raise HTTPException(status_code=500)
 
         except GitlabError as e:
             logger.error(f"Failed to get project {project_id}: {e}")
+            update_mr_labels(project, original_mr_iid, success=False)
             raise HTTPException(status_code=500)
 
         # Handle update action separately
         if action == 'update':
-            if title_postfix in mr_title:
-                logger.info(f"Updating MR {original_mr_iid}")
             return
 
         # Check for branch whitelist
         if not is_branch_allowed(target_branch, config):
-            logger.info(f"Skipping merge request: {target_branch} not in trigger branches whitelist")
             return
 
         # Prevent processing if:
         # 1. Source is default branch
         # 2. MR title already contains postfix
         # 3. Source branch already contains postfix
+        branch_postfix = config['merge_request']['branch_postfix']
         if (source_branch == default_branch or
             title_postfix in mr_title or
-            config['merge_request']['branch_postfix'] in source_branch):
-            logger.info(
-                f"Skipping merge request: source={source_branch}, "
-                f"title='{mr_title}' (preventing duplicate processing)"
-            )
+            branch_postfix in source_branch):
             return
 
         # Create new branch name
-        branch_postfix = config['merge_request']['branch_postfix']
         new_branch_name = f"{source_branch}{branch_postfix}"
+        logger.info(f"Will create new branch: {new_branch_name}")
 
         # Check if branch already exists and create new one from default
         try:
             try:
                 existing_branch = project.branches.get(new_branch_name)
-                logger.info(f"Branch {new_branch_name} already exists")
             except GitlabError as e:
                 if e.response_code == 404:
+                    ref = default_branch
                     project.branches.create({
                         'branch': new_branch_name,
-                        'ref': default_branch
+                        'ref': ref
                     })
-                    logger.info(f"Created new branch: {new_branch_name} from {default_branch}")
                 else:
                     raise e
 
@@ -209,13 +234,12 @@ async def webhook_receiver(event: MergeRequestEvent):
                 target_branch=default_branch
             )
 
-            if existing_mrs:
-                logger.info(f"MR from {new_branch_name} to {default_branch} already exists (MR ID: {existing_mrs[0].iid})")
-
+            existing_mrs_list = list(existing_mrs)
+            if existing_mrs_list:
                 # Format and add comment about existing MR
                 comment = format_template(
                     config['templates']['existing_mr'],
-                    mr_iid=existing_mrs[0].iid,
+                    mr_iid=existing_mrs_list[0].iid,
                     source_branch=new_branch_name,
                     target_branch=default_branch
                 )
@@ -226,7 +250,7 @@ async def webhook_receiver(event: MergeRequestEvent):
 
         except GitlabError as e:
             logger.error(f"Failed to manage branch {new_branch_name}: {e}")
-            add_error_label(project, original_mr_iid)
+            update_mr_labels(project, original_mr_iid, success=False)
             raise HTTPException(status_code=500)
 
         # Create new merge request
@@ -250,14 +274,6 @@ async def webhook_receiver(event: MergeRequestEvent):
 
             mr = project.mergerequests.create(mr_params)
 
-            logger.info(
-                f"Created MR - ID: {mr.iid}, "
-                f"Title: '{new_title}', "
-                f"Source: {new_branch_name}, "
-                f"Target: {default_branch}, "
-                f"Assignee: {assignee_id}"
-            )
-
             # Update original MR
             try:
                 original_mr = project.mergerequests.get(original_mr_iid)
@@ -267,9 +283,6 @@ async def webhook_receiver(event: MergeRequestEvent):
                 if 'labels' in config['merge_request']:
                     new_labels = get_label_names_from_config(config)
                     current_labels = list(set(current_labels + new_labels))
-
-                if "mr-sync-success" not in current_labels:
-                    current_labels.append("mr-sync-success")
 
                 original_mr.labels = current_labels
 
@@ -291,30 +304,30 @@ async def webhook_receiver(event: MergeRequestEvent):
 
                 original_mr.notes.create({'body': comment})
 
-                # Save all changes
+                # Save all changes and update status
                 original_mr.save()
-                logger.info(f"Updated original MR {original_mr_iid} with labels and comment")
+                update_mr_labels(project, original_mr_iid, success=True)
 
             except GitlabError as e:
                 logger.error(f"Failed to update original MR: {e}")
-                add_error_label(project, original_mr_iid)
+                update_mr_labels(project, original_mr_iid, success=False)
 
         except GitlabError as e:
             logger.error(f"Failed to create merge request: {e}")
-            add_error_label(project, original_mr_iid)
+            update_mr_labels(project, original_mr_iid, success=False)
             raise HTTPException(status_code=500)
 
     except KeyError as e:
         logger.error(f"Missing required field: {e}")
         try:
-            add_error_label(project, original_mr_iid)
+            update_mr_labels(project, original_mr_iid, success=False)
         except:
             pass
         raise HTTPException(status_code=400)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}", exc_info=True)
         try:
-            add_error_label(project, original_mr_iid)
+            update_mr_labels(project, original_mr_iid, success=False)
         except:
             pass
         raise HTTPException(status_code=500)
@@ -325,5 +338,5 @@ if __name__ == "__main__":
     host = server_config.get('host', '0.0.0.0')
     port = server_config.get('port', 8000)
 
-    logger.info(f"Starting server at {host}:{port} with log level: {config['logging']['level']}")
+    logger.info(f"Starting server at {host}:{port}")
     uvicorn.run(app, host=host, port=port)
