@@ -1,0 +1,14 @@
+fetch --nohooks --no-history chromium
+cd src
+git fetch --tags
+git checkout tags/114.0.5735.90
+#COMMIT_DATE=$(git log -n 1 --pretty=format:%ci)
+cd /depot_tools 
+git checkout $(git rev-list -n 1 --before="2023-05-26 21:30:08 +0000" main)
+git clean -ffd
+gclient sync -D --force --reset --with_branch_heads
+cd /chrome
+#gclient runhooks
+gclient sync -D
+gn gen out/Release --args="is_debug=false try=\"v3\""
+ninja -C out/Release chromedriver

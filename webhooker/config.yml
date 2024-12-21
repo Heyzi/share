@@ -1,0 +1,73 @@
+# Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# GitLab configuration
+gitlab:
+  url: "gitlab_url"
+  token: "23"
+
+# Logging configuration
+logging:
+  level: "info"  # debug, info, warning, error
+  format: "%(asctime)s - %(levelname)s - %(message)s"  # optional, default format
+
+# Merge request configuration
+merge_request:
+  # Branches that trigger automatic merge request creation
+  # If empty - no branches will be processed
+  trigger_branches:
+    - release
+
+  # Postfix to add to the duplicated merge request title
+  title_postfix: "(to main)"
+
+  # Postfix for new branch names
+  branch_postfix: "-to-main"
+
+  # Option to enable/disable automatic source branch deletion for all created MRs
+  auto_delete_source: true
+
+  # Actions that trigger webhook processing
+  actions:
+    - create
+
+  # Labels configuration with colors
+  labels:
+    - name: "to-default"
+      color: "#2EA44F"
+    - name: "mr-sync-success"
+      color: "#36B37E"
+    - name: "mr-sync-error"
+      color: "#FF5630"
+
+# Message templates
+templates:
+  # Template for new MR comment
+  mr_comment: |
+    # Automatic Merge Request Created
+    ## 🎯 Created MR
+    - **Number**: !{mr.iid}
+    - **From**: `{new_branch_name}`
+    - **To**: `{default_branch}`
+    ## 👋 Hey, @{author_username}!
+    I've created an MR to sync your changes with the main branch.
+    ## ⚡️ Action Steps
+    1. Wait for CI/CD to pass on MR
+    2. Merge current MR first
+    3. After successful merge, proceed with new MR !{mr.iid}
+    ## 🔍 Details
+    - MR created automatically
+    - Original MR: !{original_mr_iid}
+    - Reviewers: {reviewers}
+    /cc {reviewers_mentions}
+
+  # Template for existing MR notification
+  existing_mr: |
+    # Note: Default Branch Merge Request Already Exists
+    An existing merge request was found:
+    - Existing MR: !{mr_iid}
+    - Source Branch: `{source_branch}`
+    - Target Branch: `{target_branch}`
+    *No new merge request was created.*

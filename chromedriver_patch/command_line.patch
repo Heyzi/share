@@ -1,0 +1,49 @@
+--- base/command_line.cc_origin	2024-12-14 19:40:33.469904292 +0000
++++ base/command_line.cc	2024-12-14 18:35:35.835324215 +0000
+@@ -353,6 +353,7 @@
+   StringPiece switch_key = switch_string;
+   StringType combined_switch_string(switch_key);
+ #endif
++
+   size_t prefix_length = GetSwitchPrefixLength(combined_switch_string);
+   auto key = switch_key.substr(prefix_length);
+   if (g_duplicate_switch_handler) {
+@@ -362,18 +363,33 @@
+     switches_[std::string(key)] = StringType(value);
+   }
+
+-  // Preserve existing switch prefixes in |argv_|; only append one if necessary.
+-  if (prefix_length == 0) {
+-    combined_switch_string.insert(0, kSwitchPrefixes[0].data(),
+-                                  kSwitchPrefixes[0].size());
++#if BUILDFLAG(IS_WIN)
++  auto IsPath = [](const StringType& switch_string) {
++    return (switch_string.size() > 2 &&
++            ((switch_string[1] == L':' && (switch_string[2] == L'\\' || switch_string[2] == L'/')) ||
++             switch_string[0] == L'\\'));
++  };
++#else
++  auto IsPath = [](const StringType& switch_string) {
++    return (!switch_string.empty() &&
++            (switch_string[0] == '/' || switch_string.starts_with("./") || switch_string.starts_with("../")));
++  };
++#endif
++
++  if (prefix_length == 0 && !IsPath(combined_switch_string)) {
++    combined_switch_string.insert(0, kSwitchPrefixes[0].data(), kSwitchPrefixes[0].size());
+   }
+-  if (!value.empty())
++
++  if (!value.empty()) {
+     base::StrAppend(&combined_switch_string, {kSwitchValueSeparator, value});
++  }
++
+   // Append the switch and update the switches/arguments divider |begin_args_|.
+   argv_.insert(argv_.begin() + begin_args_, combined_switch_string);
+   begin_args_ = (CheckedNumeric(begin_args_) + 1).ValueOrDie();
+ }
+
++
+ void CommandLine::AppendSwitchASCII(StringPiece switch_string,
+                                     StringPiece value_string) {
+ #if BUILDFLAG(IS_WIN)

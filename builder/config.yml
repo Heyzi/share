@@ -1,0 +1,39 @@
+version: "1"
+#branch: master
+extensions:
+  test-extension:
+    id: 4
+    repo: http://192.168.1.111:8888/main/pipeline_tester
+    description: test!
+    tags: [java, python]
+    build_configs:
+      - job_name: build-job
+        tags: [windows, x64]
+#      - job_name: build_windowsdows_arm64
+#        tags: [windows, arm64]
+#      - job_name: build_linux_x64
+#        tags: [linux, x64]
+  myext05:
+    id: 5
+    repo: http://192.168.1.111:8888/main/pipeline_tester3
+    description:  test!
+    branch: develop
+    tags: [java, python]
+    build_configs:
+      - job_name: build_linux_x64
+        tags: [linux, x64]
+      - job_name: build-job
+        tags: [windows, x64]
+  myext06:
+    id: 6
+    repo: http://192.168.1.111:8888/main/pipeline_tester4
+    description:  test!
+    branch: develop
+    tags: [test_tag1, test_tag2]
+    build_configs:
+      - job_name: build_linux_x64
+        tags: [linux, x64]
+      - job_name: build-job
+        tags: [windows, x64]
+      - job_name: build-job1
+        tags: [windows, x64]
