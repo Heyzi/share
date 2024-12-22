@@ -45,7 +45,7 @@ class DownloadTask:
        return data
 
    def format_info(self) -> str:
-       """Format task information as a string for logging."""
+       """Format task information as string for logging."""
        branch = self.branch.strip() if self.branch else 'default'
        return "{:<30} job: {:<15} branch: {:<20}{}".format(
            self.extension_name,
@@ -62,6 +62,7 @@ class ExtensionConfig:
        self.config_path = Path(config_path)
        logger.debug("Loading configuration from: {}".format(self.config_path))
        self.config = self._load_config()
+       self.global_branch = self._get_global_branch()
 
    def _load_config(self) -> Dict:
        """Load and validate the YAML configuration file."""
@@ -85,6 +86,28 @@ class ExtensionConfig:
        if missing:
            logger.error("Missing required fields: {}".format(', '.join(missing)))
            sys.exit(1)
+
+   def _get_global_branch(self) -> Optional[str]:
+       """Get global branch from environment or config."""
+       global_branch = os.getenv('EXTENSIONS_GLOBAL_BRANCH')
+       
+       if global_branch:
+           global_branch = global_branch.strip()
+           logger.info("Using global branch from environment: {}".format(global_branch))
+           if global_branch.lower() not in ('default', 'null', ''):
+               self.validate_branch(global_branch, 'global')
+               return global_branch
+
+       config_branch = self.config.get('global_branch')
+       if config_branch:
+           config_branch = config_branch.strip()
+           if config_branch:
+               self.validate_branch(config_branch, 'global')
+               logger.info("Using global branch from config: {}".format(config_branch))
+               return config_branch
+
+       logger.info("No global branch configured")
+       return None
 
    def validate_branch(self, branch: str, ext_name: str) -> None:
        """Validate GitLab branch name format."""
@@ -112,7 +135,7 @@ class ExtensionConfig:
            sys.exit(1)
 
    def get_branch(self, ext_data: Dict[str, Any]) -> Optional[str]:
-       """Get branch name from environment or config."""
+       """Get branch name from environment, config, or global setting."""
        ext_name = ext_data['name']
        env_name = "EXTENSIONS_{}_BRANCH".format(ext_name.upper())
 
@@ -133,26 +156,23 @@ class ExtensionConfig:
 
        if branch:
            branch = branch.strip()
-           if branch.lower() in ('default', 'null', ''):
-               logger.info("Branch from environment for {} is set to '{}', using config value".format(ext_name, branch))
-               branch = ext_data.get('branch')
-               if branch:
-                   branch = branch.strip()
-                   logger.info("Using branch from config: {}".format(branch))
-           else:
-               if branch:
-                   self.validate_branch(branch, ext_name)
-                   logger.info("Using branch from environment: {}".format(branch))
-                   return branch
+           if branch.lower() not in ('default', 'null', ''):
+               self.validate_branch(branch, ext_name)
+               logger.info("Using branch from environment: {}".format(branch))
+               return branch
 
        branch = ext_data.get('branch')
        if branch:
            branch = branch.strip()
            if branch:
                self.validate_branch(branch, ext_name)
-               logger.info("Using branch from config: {}".format(branch))
+               logger.info("Using branch from extension config: {}".format(branch))
                return branch
-       
+
+       if self.global_branch:
+           logger.info("Using global branch for {}: {}".format(ext_name, self.global_branch))
+           return self.global_branch
+
        logger.info("No branch found for {}".format(ext_name))
        return None
 
