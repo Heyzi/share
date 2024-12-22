@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 # Configure logging to write to stdout
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', 
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S'))
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
@@ -52,12 +52,12 @@ class TaskConfig:
 class Config:
     """Base configuration container."""
     version: str
-    generated_at: datetime  
+    generated_at: datetime
     tasks: List[TaskConfig]
 
 class GitLabClient:
     """Client for interacting with GitLab API."""
-    
+
     def __init__(self, base_url: str, token: str):
         """Initialize GitLab client with base URL and authentication token."""
         self.base_url = base_url.rstrip('/')
@@ -72,24 +72,24 @@ class GitLabClient:
         """Get all results using pagination."""
         if params is None:
             params = {}
-        
+
         page = 1
         results = []
-        
+
         while True:
             page_params = {**params, 'page': page, 'per_page': 100}
             page_results = self._make_request(endpoint, page_params)
-            
+
             if not page_results:
                 break
-                
+
             results.extend(page_results)
-            
+
             if len(page_results) < 100:
                 break
-                
+
             page += 1
-        
+
         return results
 
     def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Any:
@@ -97,13 +97,13 @@ class GitLabClient:
         url = f"{self.base_url}/{endpoint}"
         if '/api/v4/api/v4' in url:
             url = url.replace('/api/v4/api/v4', '/api/v4')
-        
+
         if params:
             query_string = '&'.join(f"{k}={v}" for k, v in params.items())
             url = f"{url}?{query_string}"
 
         request = urllib.request.Request(url, headers=self.headers)
-        
+
         try:
             ctx = get_ssl_context()
             with urllib.request.urlopen(request, context=ctx) as response:
@@ -134,7 +134,8 @@ class GitLabClient:
         except Exception:
             return 'master'
 
-    def get_job_info(self, project_id: int, job_id: int = None, job_name: str = None, branch: str = None) -> Dict[str, Any]:
+    def get_job_info(self, project_id: int, job_id: Optional[int] = None,
+                 job_name: Optional[str] = None, branch: Optional[str] = None) -> Dict[str, Any]:
         """Get information about latest successful job from a pipeline."""
         if job_id:
             job_info = self._make_request(f'projects/{project_id}/jobs/{job_id}')
@@ -203,7 +204,7 @@ class GitLabClient:
 
 class ArtifactDownloader:
     """High-level interface for downloading GitLab artifacts."""
-    
+
     def __init__(self, gitlab_url: str, token: str, output_dir: Path):
         """Initialize downloader with GitLab URL, token and output directory."""
         self.client = GitLabClient(gitlab_url, token)
@@ -225,9 +226,9 @@ class ArtifactDownloader:
             name = f"project_{project_id}"
             job_info = self.client.get_job_info(project_id, job_id=job_id)
             output_path = self.format_output_path(name, job_info)
-            
+
             self.client.download_artifact(project_id, job_id, output_path)
-            
+
             result = {
                 'success': True,
                 'extension_name': name,
@@ -252,7 +253,7 @@ class ArtifactDownloader:
                 branch=branch
             )
             output_path = self.format_output_path(task.extension_name, job_info)
-            
+
             logger.info(f"Downloading artifact for {task.extension_name}\n"
                        f"Job URL: {job_info['web_url']}")
 
@@ -288,7 +289,7 @@ class ArtifactDownloader:
                 if not config_data.get('tasks'):
                     logger.info("No tasks in configuration file, nothing to download")
                     return []
-                
+
                 tasks = []
                 for task_data in config_data['tasks']:
                     task_config = {
@@ -300,9 +301,9 @@ class ArtifactDownloader:
                         task_config['branch'] = task_data['branch']
                     if 'tags' in task_data:
                         task_config['tags'] = task_data['tags']
-                        
+
                     tasks.append(TaskConfig(**task_config))
-                    
+
             except Exception as e:
                 raise ConfigurationError(f"Failed to load config: {str(e)}")
 

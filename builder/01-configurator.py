@@ -12,12 +12,14 @@ from typing import Dict, List, Set, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-logging.basicConfig(
-   format='%(asctime)s [%(levelname)s] %(message)s',
-   level=logging.INFO,
-   datefmt='%Y-%m-%d %H:%M:%S'
-)
+# Configure logging to write to stdout
 logger = logging.getLogger(__name__)
+logger.propagate = False
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s',
+                                   datefmt='%Y-%m-%d %H:%M:%S'))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 @dataclass
 class DownloadTask:
@@ -173,7 +175,7 @@ class ExtensionConfig:
        logger.info("No branch found for {}".format(ext_name))
        return None
 
-   def filter_extensions(self, base_tags: Set[str], include_extensions: Set[str] = None) -> List[Dict[str, Any]]:
+   def filter_extensions(self, base_tags: Set[str], include_extensions: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
        """Filter extensions based on tags and explicitly included extensions."""
        result = []
        include_extensions = include_extensions or set()
@@ -281,7 +283,7 @@ def main() -> int:
    args = parser.parse_args()
 
    if args.verbose:
-       logging.getLogger().setLevel(logging.DEBUG)
+       logger.setLevel(logging.DEBUG)
 
    logger.info("Checking environment variables:")
    for k, v in os.environ.items():

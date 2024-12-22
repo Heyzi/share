@@ -8,17 +8,20 @@ import os
 import re
 import subprocess
 import time
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
-logging.basicConfig(
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+# Configure logging to write to stdout
 logger = logging.getLogger(__name__)
+logger.propagate = False
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s',
+                                    datefmt='%Y-%m-%d %H:%M:%S'))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 @dataclass
 class FileInfo:
@@ -26,7 +29,7 @@ class FileInfo:
     version: str
     commit_id: str
     arch: str
-    os_type: str
+    os_type: Optional[str]
     subproduct_name: str
     timestamp: int
     sha256: str
@@ -104,11 +107,11 @@ class ArtifactProcessor:
             raise ValueError(f"Invalid filename format: {filename}")
         components = match.groupdict()
         logger.debug(f"Parsed components: {components}")
-        
+
         # Установка значений по умолчанию
         if not components.get('arch'):
             components['arch'] = 'x64'
-            
+
         return components
 
     def process_file(self, file_path: Path) -> FileInfo:
@@ -190,7 +193,7 @@ def main():
     args = parser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     logger.info("Starting artifact processing")
 

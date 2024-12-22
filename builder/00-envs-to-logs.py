@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
-logging.basicConfig(
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+# Configure logging to write to stdout
 logger = logging.getLogger(__name__)
+logger.propagate = False
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s',
+                                    datefmt='%Y-%m-%d %H:%M:%S'))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 @dataclass
 class EnvVariable:
@@ -71,7 +73,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     config = EnvironmentConfig(args.config)
     variables = config.get_variables()
