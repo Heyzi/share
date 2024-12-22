@@ -90,7 +90,7 @@ class ExtensionConfig:
    def _get_global_branch(self) -> Optional[str]:
        """Get global branch from environment or config."""
        global_branch = os.getenv('EXTENSIONS_GLOBAL_BRANCH')
-       
+
        if global_branch:
            global_branch = global_branch.strip()
            logger.info("Using global branch from environment: {}".format(global_branch))
@@ -135,43 +135,40 @@ class ExtensionConfig:
            sys.exit(1)
 
    def get_branch(self, ext_data: Dict[str, Any]) -> Optional[str]:
-       """Get branch name from environment, config, or global setting."""
+       """Get branch name with correct priority order."""
+       # 1. Check global environment variable
+       global_env_branch = os.getenv('EXTENSIONS_GLOBAL_BRANCH')
+       if global_env_branch:
+           global_env_branch = global_env_branch.strip()
+           if global_env_branch.lower() not in ('default', 'null', ''):
+               self.validate_branch(global_env_branch, 'global')
+               logger.info("Using global branch from environment: {}".format(global_env_branch))
+               return global_env_branch
+
+       # 2. Check global configuration
+       if self.global_branch:
+           logger.info("Using global branch from config: {}".format(self.global_branch))
+           return self.global_branch
+
+       # 3. Check extension-specific environment variable
        ext_name = ext_data['name']
        env_name = "EXTENSIONS_{}_BRANCH".format(ext_name.upper())
+       ext_env_branch = os.getenv(env_name)
+       if ext_env_branch:
+           ext_env_branch = ext_env_branch.strip()
+           if ext_env_branch.lower() not in ('default', 'null', ''):
+               self.validate_branch(ext_env_branch, ext_name)
+               logger.info("Using branch from environment for {}: {}".format(ext_name, ext_env_branch))
+               return ext_env_branch
 
-       logger.info("Checking branch for extension {}".format(ext_name))
-       logger.info("Looking for environment variable: {}".format(env_name))
-
-       branch = None
-       if os.name == 'nt':  # Windows
-           for k, v in os.environ.items():
-               if k.upper() == env_name.upper():
-                   branch = v
-                   logger.info("Found environment variable {}={}".format(k, v))
-                   break
-       else:  # Unix-like systems
-           branch = os.getenv(env_name)
-           if branch is not None:
-               logger.info("Found environment variable {}={}".format(env_name, branch))
-
-       if branch:
-           branch = branch.strip()
-           if branch.lower() not in ('default', 'null', ''):
-               self.validate_branch(branch, ext_name)
-               logger.info("Using branch from environment: {}".format(branch))
-               return branch
-
+       # 4. Check extension-specific configuration
        branch = ext_data.get('branch')
        if branch:
            branch = branch.strip()
            if branch:
                self.validate_branch(branch, ext_name)
-               logger.info("Using branch from extension config: {}".format(branch))
+               logger.info("Using branch from extension config for {}: {}".format(ext_name, branch))
                return branch
-
-       if self.global_branch:
-           logger.info("Using global branch for {}: {}".format(ext_name, self.global_branch))
-           return self.global_branch
 
        logger.info("No branch found for {}".format(ext_name))
        return None
@@ -190,7 +187,7 @@ class ExtensionConfig:
 
            for build in ext_data.get('build_configs', []):
                all_tags = ext_tags | set(build.get('tags', []))
-               
+
                if ext_name in include_extensions:
                    matching_tags = base_tags & all_tags
                    if matching_tags:
