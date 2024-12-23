@@ -6,28 +6,45 @@ import logging
 import json
 from logging.handlers import TimedRotatingFileHandler
 import sys
+import os
 from typing import List, Optional, Tuple
 from gitlab.exceptions import GitlabError
 from functools import wraps
 
 class JsonFormatter(logging.Formatter):
+    """Custom JSON formatter for structured logging"""
     def format(self, record):
+        log_data = {
+            'timestamp': self.formatTime(record),
+            'level': record.levelname,
+            'logger': record.name,
+            'function': record.funcName,
+        }
+        
         if hasattr(record, 'props'):
-            return json.dumps(record.props)
-        return json.dumps({
-            'msg': record.getMessage(),
-            'error': self.formatException(record.exc_info) if record.exc_info else None
-        })
+            log_data.update(record.props)
+        else:
+            log_data.update({
+                'message': record.getMessage(),
+                'error': self.formatException(record.exc_info) if record.exc_info else None
+            })
+            
+        return json.dumps(log_data)
 
 def setup_logging(config):
+    """Initialize logging with JSON formatting and file rotation"""
     logger = logging.getLogger()
     logger.setLevel(config['logging']['level'].upper())
     logger.handlers = []
 
+    # Create logs directory if it doesn't exist
+    log_dir = os.path.join(os.getcwd(), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+
     handlers = [
         logging.StreamHandler(sys.stdout),
         TimedRotatingFileHandler(
-            filename=config['logging'].get('file', 'app.log'),
+            filename=os.path.join(log_dir, config['logging'].get('file', 'app.log')),
             when='midnight',
             interval=1,
             backupCount=7,
@@ -43,6 +60,7 @@ def setup_logging(config):
     return logger
 
 def load_config():
+    """Load application configuration from YAML file"""
     try:
         with open('config.yml', 'r') as file:
             return yaml.safe_load(file)
@@ -53,6 +71,7 @@ config = load_config()
 logger = setup_logging(config)
 
 def init_gitlab_client():
+    """Initialize GitLab client with authentication"""
     try:
         gl = gitlab.Gitlab(config['gitlab']['url'], private_token=config['gitlab']['token'])
         gl.auth()
@@ -65,6 +84,7 @@ gl = init_gitlab_client()
 app = FastAPI()
 
 class MergeRequestEvent(BaseModel):
+    """Pydantic model for GitLab merge request webhook payload"""
     object_kind: str
     project: dict
     object_attributes: dict
@@ -74,6 +94,7 @@ class MergeRequestEvent(BaseModel):
         extra = "allow"
 
 def gitlab_error_handler(func):
+    """Decorator for handling GitLab API errors"""
     @wraps(func)
     async def wrapper(*args, **kwargs):
         try:
@@ -84,6 +105,7 @@ def gitlab_error_handler(func):
     return wrapper
 
 class MergeRequestManager:
+    """Handles merge request operations and synchronization"""
     LABEL_COLORS = {
         'mr-sync-success': '#1FCC56',
         'mr-sync-error': '#FF0000'
@@ -98,13 +120,36 @@ class MergeRequestManager:
         self._ensure_status_labels()
 
     def _ensure_status_labels(self):
+        """Ensure required labels exist in the project"""
         status_labels = [
             {'name': name, 'color': color, 'description': f'MR sync {name.split("-")[-1]}'}
             for name, color in self.LABEL_COLORS.items()
         ]
         self.ensure_labels_exist(status_labels)
 
+    def _get_user_info(self, user: dict) -> dict:
+        """Extract user information for logging"""
+        if not user:
+            return {'username': 'unknown', 'email': 'unknown'}
+        return {
+            'username': user.get('username', 'unknown'),
+            'email': user.get('email', 'unknown'),
+            'name': user.get('name', 'unknown')
+        }
+
+    def _get_mr_info(self, event: MergeRequestEvent) -> dict:
+        """Extract merge request information for logging"""
+        project_path = event.project['path_with_namespace']
+        mr_iid = event.object_attributes['iid']
+        return {
+            'project': project_path,
+            'mr_url': f"{event.project['web_url']}/-/merge_requests/{mr_iid}",
+            'source_branch': event.object_attributes['source_branch'],
+            'target_branch': event.object_attributes['target_branch']
+        }
+
     def _should_process_mr(self, event: MergeRequestEvent) -> Tuple[bool, str]:
+        """Determine if merge request should be processed"""
         if event.object_kind != 'merge_request':
             return False, 'not_mr'
 
@@ -117,12 +162,15 @@ class MergeRequestManager:
         return True, ''
 
     def _is_branch_allowed(self, branch: str) -> bool:
+        """Check if branch is in allowed list"""
         return branch in self.mr_config.get('trigger_branches', [])
 
     def _get_label_names(self) -> List[str]:
+        """Get configured label names"""
         return [label['name'] for label in self.mr_config.get('labels', [])]
 
     def _extract_mr_details(self, event: MergeRequestEvent) -> dict:
+        """Extract relevant merge request details"""
         return {
             'source_branch': event.object_attributes['source_branch'],
             'target_branch': event.object_attributes['target_branch'],
@@ -135,6 +183,7 @@ class MergeRequestManager:
         }
 
     def ensure_labels_exist(self, labels):
+        """Create or update project labels"""
         existing = {l.name: l for l in self.project.labels.list(all=True)}
         for label in labels:
             try:
@@ -149,6 +198,7 @@ class MergeRequestManager:
                 logger.error({'event': 'label_error', 'label': label['name'], 'error': str(e)})
 
     def _handle_branch_creation(self, new_branch_name: str) -> None:
+        """Create new branch if it doesn't exist"""
         try:
             self.project.branches.get(new_branch_name)
         except GitlabError as e:
@@ -159,10 +209,10 @@ class MergeRequestManager:
                 })
 
     def _create_new_mr(self, new_branch_name: str, mr_details: dict):
+        """Create a new merge request"""
         project_url = self.project.attributes['web_url']
         original_mr_url = f"{project_url}/-/merge_requests/{mr_details['original_mr_iid']}"
 
-        # Create MR with basic info
         mr_params = {
             'source_branch': new_branch_name,
             'target_branch': self.default_branch,
@@ -176,7 +226,6 @@ class MergeRequestManager:
 
         new_mr = self.project.mergerequests.create(mr_params)
 
-        # Add comment with sync information
         comment = self.config['templates']['target_mr_comment'].format(
             original_mr_url=original_mr_url,
             source_branch=mr_details['source_branch'],
@@ -188,15 +237,14 @@ class MergeRequestManager:
         return new_mr
 
     def _update_original_mr(self, mr_details: dict, new_mr) -> None:
+        """Update original merge request with sync information"""
         original_mr = self.project.mergerequests.get(mr_details['original_mr_iid'])
 
-        # Update labels from config
         if 'labels' in self.mr_config:
             current_labels = set(original_mr.labels)
             new_labels = set(self._get_label_names())
             original_mr.labels = list(current_labels | new_labels)
 
-        # Add comment with new MR info
         reviewers = [f"@{r['username']}" for r in mr_details['reviewers']]
         reviewers_str = ", ".join(reviewers) if reviewers else "No reviewers assigned"
 
@@ -214,6 +262,7 @@ class MergeRequestManager:
         original_mr.save()
 
     def _update_mr_labels(self, mr_iid: int, success: bool):
+        """Update merge request labels based on sync status"""
         try:
             mr = self.project.mergerequests.get(mr_iid)
             labels = set(mr.labels) - {'mr-sync-success', 'mr-sync-error'}
@@ -224,25 +273,24 @@ class MergeRequestManager:
             logger.error({'event': 'label_update_error', 'mr': mr_iid, 'error': str(e)})
 
     async def process_merge_request(self, event: MergeRequestEvent):
-        mr_id = event.object_attributes['iid']
-        user = event.user.get('username', 'unknown') if event.user else 'unknown'
+        """Main method for processing merge request events"""
+        user_info = self._get_user_info(event.user)
+        mr_info = self._get_mr_info(event)
 
         logger.info({
             'event': 'webhook',
-            'mr': mr_id,
-            'user': user,
+            'user': user_info,
             'action': event.object_attributes.get('action'),
-            'source': event.object_attributes['source_branch'],
-            'target': event.object_attributes['target_branch']
+            'mr_info': mr_info
         })
 
         should_process, skip_reason = self._should_process_mr(event)
         if not should_process:
             logger.info({
                 'event': 'skip',
-                'mr': mr_id,
-                'user': user,
-                'reason': skip_reason
+                'user': user_info,
+                'reason': skip_reason,
+                'mr_info': mr_info
             })
             return
 
@@ -257,17 +305,17 @@ class MergeRequestManager:
 
             logger.info({
                 'event': 'success',
-                'mr': mr_id,
-                'user': user,
-                'new_mr': new_mr.iid,
-                'branch': new_branch
+                'user': user_info,
+                'mr_info': mr_info,
+                'new_mr_url': f"{event.project['web_url']}/-/merge_requests/{new_mr.iid}",
+                'new_branch': new_branch
             })
 
         except Exception as e:
             logger.error({
                 'event': 'error',
-                'mr': mr_id,
-                'user': user,
+                'user': user_info,
+                'mr_info': mr_info,
                 'error': str(e)
             })
             self._update_mr_labels(mr_details['original_mr_iid'], False)
@@ -276,6 +324,7 @@ class MergeRequestManager:
 @app.post("/webhook")
 @gitlab_error_handler
 async def webhook_receiver(event: MergeRequestEvent):
+    """Webhook endpoint for processing merge request events"""
     project = gl.projects.get(event.project['id'])
     mr_manager = MergeRequestManager(project, config)
     return await mr_manager.process_merge_request(event)
