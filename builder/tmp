@@ -1,0 +1,29 @@
+## Platform Compatibility
+
+| Extension | Windows x64 | Linux x64/arm64 | Darwin arm64 | Harmony arm64 |
+|:----------|:----------:|:---------------:|:------------:|:-------------:|
+| `java-assist` | ✅ | ✅ | ✅ | ❌ |
+| `java-dap-client` | ✅ | ✅ | ✅ | ✅ |
+| `codearts-python` | ✅ | ✅ | ✅ | ❌ |
+| `python-project-wizard` | ✅ | ✅ | ✅ | ❌ |
+| `jupyter` | ✅ | ❌ | ❌ | ❌ |
+| `batis-xml` | ✅ | ✅ | ❌ | ❌ |
+| `codearts-keybindings` | ✅ | ✅ | ❌ | ❌ |
+| `codearts-agents` | ✅ | ❌ | ✅ | ❌ |
+
+## Development Environment
+
+| Extension | Inscode | Java | Python |
+|:----------|:--------|:-----|:-------|
+| `java-assist` | Windows, Darwin | Windows, Linux | ❌ |
+| `java-dap-client` | Windows, Darwin | Windows, Linux | ❌ |
+| `codearts-python` | Windows, Darwin | ❌ | Windows, Linux |
+| `python-project-wizard` | Windows, Darwin | ❌ | Windows, Linux |
+| `jupyter` | Windows, Darwin | ❌ | Windows |
+| `batis-xml` | Windows, Darwin | Windows, Linux | Windows, Linux |
+| `codearts-keybindings` | Windows, Darwin | Windows, Linux | Windows, Linux |
+| `codearts-agents` | Windows, Darwin | ❌ | ❌ |
+
+## Legend
+✅ - Full Support  
+❌ - No Support
