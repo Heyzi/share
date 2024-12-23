@@ -11,7 +11,7 @@ import time
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import dataclass
 
 # Configure logging to write to stdout
@@ -29,7 +29,7 @@ class FileInfo:
     version: str
     commit_id: str
     arch: str
-    os_type: Optional[str]
+    os_type: str
     subproduct_name: str
     timestamp: int
     sha256: str
@@ -45,7 +45,14 @@ class ArtifactProcessor:
     OS_MAP = {
         'linux': 'debian',
         'darwin': 'darwin',
-        None: 'windows'
+        'windows': 'windows'
+    }
+
+    EXTENSION_OS_MAP = {
+        'deb': 'debian',
+        'rpm': 'debian',
+        'exe': 'windows',
+        'dmg': 'darwin'
     }
 
     def __init__(self, package_json_path: str):
@@ -100,18 +107,37 @@ class ArtifactProcessor:
 
     def _parse_filename(self, filename: str) -> Dict[str, str]:
         logger.debug(f"Parsing filename: {filename}")
-        pattern = r'[\w-]+-(?:(?P<arch>arm64|x64)(?:-(?P<os>linux|darwin))?-)?(?P<version>[\d.]+)(?:-\w+)?'
+        pattern = r'[\w-]+-(?:(?P<arch>arm64|x64)(?:-)?)?(?P<version>[\d.]+)(?:-[\w]+)?'
         match = re.match(pattern, filename)
         if not match:
             logger.error(f"Invalid filename format: {filename}")
             raise ValueError(f"Invalid filename format: {filename}")
+        
         components = match.groupdict()
         logger.debug(f"Parsed components: {components}")
 
-        # Установка значений по умолчанию
-        if not components.get('arch'):
-            components['arch'] = 'x64'
+        # Get file extension without dot
+        file_extension = filename.split('.')[-1].lower()
 
+        # Determine OS by extension
+        os_type = self.EXTENSION_OS_MAP.get(file_extension)
+        if not os_type:
+            logger.warning(f"Unknown file extension: {file_extension}")
+            os_type = 'windows'  # default value
+
+        # Determine architecture
+        arch = components.get('arch')
+        if not arch:
+            # For macOS (.dmg) use arm64 by default
+            if file_extension == 'dmg':
+                arch = 'arm64'
+            else:
+                arch = 'x64'  # default value for other cases
+
+        components['os'] = os_type
+        components['arch'] = arch
+
+        logger.debug(f"Final components: {components}")
         return components
 
     def process_file(self, file_path: Path) -> FileInfo:
@@ -129,7 +155,7 @@ class ArtifactProcessor:
             version=self.version,
             commit_id=self.commit_id,
             arch=self.ARCH_MAP[parsed['arch']],
-            os_type=self.OS_MAP.get(parsed.get('os')),
+            os_type=parsed['os'],
             subproduct_name=subproduct_name,
             timestamp=timestamp,
             sha256=self._get_sha256(file_path),
@@ -171,13 +197,13 @@ class ArtifactProcessor:
     def generate_metadata(self, file_info: FileInfo) -> Dict[str, Any]:
         logger.debug(f"Generating metadata for: {file_info.path}")
         metadata = {
-            'version': self.version,
+            'current_version': self.version,
             'commit_id': file_info.commit_id,
-            'architecture': file_info.arch,
-            'platform': file_info.os_type,
-            'component': file_info.subproduct_name,
+            'arch': file_info.arch,
+            'os_type': file_info.os_type,
+            'sub_product_name': file_info.subproduct_name,
             'timestamp': file_info.timestamp,
-            'checksum': file_info.sha256,
+            'sha256hash': file_info.sha256,
             'is_server': False
         }
         logger.debug(f"Generated metadata: {metadata}")
