@@ -112,18 +112,24 @@ class ArtifactProcessor:
 
     def _parse_filename(self, file_path: Path) -> Dict[str, str]:
         filename = file_path.stem
-        pattern = r'[\w-]+-(?:(?P<arch>arm64|x64|x86_64)(?:-)?)?(?P<version>[\d.]+)(?:-[\w]+)?'
+        # Fixed pattern that better handles Linux/Windows paths
+        pattern = r'(?:codearts-)?(?:[\w-]+)-(?P<arch>arm64|x64|x86_64)?-?(?P<version>[\d.]+)(?:-[\w]+)?'
         match = re.match(pattern, filename)
         
         if not match:
             raise ValueError(f"Invalid filename format: {filename}")
-
+    
         components = match.groupdict()
-        arch = components.get('arch', 'x64')  # Default to x64 if not specified
-        
-        if arch not in self.ARCH_MAP:
-            raise ValueError(f"Unknown architecture: {arch}")
-
+        # Default architecture handling
+        arch = components.get('arch')
+        if not arch:
+            if 'linux' in filename.lower():
+                arch = 'x64'
+            elif 'darwin' in filename.lower():
+                arch = 'arm64'
+            else:
+                arch = 'x64'
+    
         components['arch'] = arch
         components['os'] = self._detect_os_type(file_path, components)
         
