@@ -38,8 +38,8 @@ class FileInfo:
 class ArtifactProcessor:
     ARCH_MAP = {
         'x64': 'X86-64',
-        'arm64': 'Arm64',
-        'arm': 'Arm64'
+        'arm64': 'ARM64',
+        'arm': 'ARM64'
     }
 
     OS_MAP = {
