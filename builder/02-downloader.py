@@ -214,7 +214,7 @@ class ArtifactDownloader:
     def format_output_path(self, name: str, job_info: Dict[str, Any]) -> Path:
         """Generate output path for artifact file."""
         safe_name = "".join(c for c in name if c.isalnum() or c in ('-', '_'))
-        branch = job_info.get('branch', 'unknown')
+        branch = job_info.get('branch', 'unknown').replace('/', '-')
         pipeline_id = job_info.get('pipeline_id')
         job_id = job_info.get('job_id')
         return self.output_dir / f"{safe_name}_pipeline{pipeline_id}_job{job_id}_branch-{branch}.zip"
