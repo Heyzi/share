@@ -15,32 +15,12 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 @dataclass
-class ArtifactInfo:
-    pipeline_id: str
-    job_id: str
-    branch: str
-
-    @staticmethod
-    def parse_filename(filename: str) -> Optional['ArtifactInfo']:
-        pattern = r'.*[_-]pipeline(\d+)[_-]job(\d+)[_-]branch[_-](.+?)\.(?:zip|vsix|carts)$'
-        try:
-            match = re.match(pattern, filename)
-            if match:
-                branch = re.sub(r'%2[Ff]', '/', match.group(3))
-                branch = re.sub(r'[^\w\-\.\/]', '_', branch)
-                return ArtifactInfo(match.group(1), match.group(2), branch)
-        except Exception as e:
-            logger.error(f"Error parsing filename {filename}: {e}")
-        return None
-
-@dataclass
 class ExtensionInfo:
     sha256: str
     install_path: str
     version: str
     file_format: str
     filename: str
-    artifact_info: Optional[ArtifactInfo] = None
 
     @staticmethod
     def parse_line(line: str) -> Optional['ExtensionInfo']:
@@ -60,13 +40,6 @@ class ExtensionInfo:
 
     def get_package_name(self) -> str:
         return self.install_path.split('.', 1)[-1]
-
-    def format_artifact_info(self) -> str:
-        if not self.artifact_info:
-            return ""
-        return (f" (pipeline #{self.artifact_info.pipeline_id}, "
-                f"job #{self.artifact_info.job_id}, "
-                f"branch: {self.artifact_info.branch})")
 
 @dataclass
 class ProcessingStats:
@@ -138,7 +111,7 @@ class ExtensionProcessor:
             with zipfile.ZipFile(zip_path) as zf:
                 for f in zf.filelist:
                     if f.filename.lower().endswith(('.vsix', '.carts')) and '__MACOSX' not in f.filename:
-                        out_path = temp_dir / os.path.basename(f.filename)
+                        out_path = temp_dir / Path(f.filename).name
                         with zf.open(f) as src, open(out_path, 'wb') as dst:
                             shutil.copyfileobj(src, dst)
                         extracted.append(out_path)
@@ -198,7 +171,6 @@ class ExtensionProcessor:
                             file_format='carts' if ext_file.suffix.lower() == '.carts' else 'vsix',
                             filename=ext_file.name
                         )
-                        new_ext.artifact_info = ArtifactInfo.parse_filename(ext_file.name)
 
                         self._handle_transition(name, new_ext)
 
@@ -222,12 +194,12 @@ class ExtensionProcessor:
             if self.stats.updated_extensions:
                 logger.info("Updated extensions:")
                 for old, new in self.stats.updated_extensions:
-                    logger.info(f"- {new.install_path}: v{old.version} -> v{new.version} [{new.file_format}]{new.format_artifact_info()}")
+                    logger.info(f"- {new.install_path}: v{old.version} -> v{new.version} [{new.file_format}]")
 
             if self.stats.new_extensions:
                 logger.info("Newly added extensions:")
                 for ext in self.stats.new_extensions:
-                    logger.info(f"- {ext.install_path} v{ext.version} [{ext.file_format}]{ext.format_artifact_info()}")
+                    logger.info(f"- {ext.install_path} v{ext.version} [{ext.file_format}]")
 
             logger.info("Changes summary:")
             logger.info(f"- Updated: {len(self.stats.updated_extensions)}")
