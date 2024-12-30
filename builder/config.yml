@@ -1,39 +1,56 @@
 version: "1"
-#branch: master
 extensions:
-  test-extension:
+  cpp-extension:
+    id: 1
+    repo: http://gitlab.example.com/cpp-ext
+    description: "C++ extension"
+    products: [cpp, clang, python]  # добавлен python
+    build_configs:
+      - job_name: build_windows_x64
+        platforms: [windows, x64]
+      - job_name: build_linux_x64
+        platforms: [linux, x64]
+
+  python-extension:
+    id: 2
+    repo: http://gitlab.example.com/python-ext
+    description: "Python extension"
+    branch: develop
+    products: [python, pip]
+    build_configs:
+      - job_name: build_windows_x64
+        platforms: [windows, x64]
+      - job_name: build_linux_arm64
+        platforms: [linux, arm64]
+
+  java-extension:
+    id: 3
+    repo: http://gitlab.example.com/java-ext
+    description: "Java extension"
+    products: [java, maven, python]  # добавлен python
+    build_configs:
+      - job_name: build_all
+        platforms: [windows, linux, x64]
+
+  data-science-extension:
     id: 4
-    repo: http://192.168.1.111:8888/main/pipeline_tester
-    description: test!
-    tags: [java, python]
+    repo: http://gitlab.example.com/ds-ext
+    description: "Data Science extension"
+    products: [python, r, tensorflow]
     build_configs:
-      - job_name: build-job
-        tags: [windows, x64]
-#      - job_name: build_windowsdows_arm64
-#        tags: [windows, arm64]
-#      - job_name: build_linux_x64
-#        tags: [linux, x64]
-  myext05:
+      - job_name: build_gpu
+        platforms: [linux, x64, cuda]
+      - job_name: build_cpu
+        platforms: [linux, x64]
+
+  ml-extension:
     id: 5
-    repo: http://192.168.1.111:8888/main/pipeline_tester3
-    description:  test!
-    branch: develop
-    tags: [java, python]
+    repo: http://gitlab.example.com/ml-ext
+    description: "Machine Learning extension"
+    branch: main
+    products: [python, pytorch, cpp]  # содержит python и cpp
     build_configs:
-      - job_name: build_linux_x64
-        tags: [linux, x64]
-      - job_name: build-job
-        tags: [windows, x64]
-  myext06:
-    id: 6
-    repo: http://192.168.1.111:8888/main/pipeline_tester4
-    description:  test!
-    branch: develop
-    tags: [test_tag1, test_tag2]
-    build_configs:
-      - job_name: build_linux_x64
-        tags: [linux, x64]
-      - job_name: build-job
-        tags: [windows, x64]
-      - job_name: build-job1
-        tags: [windows, x64]
+      - job_name: build_training
+        platforms: [linux, x64, cuda]
+      - job_name: build_inference
+        platforms: [windows, x64]
