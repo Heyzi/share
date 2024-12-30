@@ -1,13 +1,10 @@
-Вот обновленный README с учетом новой структуры и логики:
-
-```markdown
 # Extension Configuration Guide
 
 ## Overview
-System for configuring multi-platform pipeline extensions with flexible branch management and build specifications. The system filters extensions based on products and platforms to generate task configurations.
+System for configuring multi-platform pipeline extensions with flexible branch management and build specifications. The system filters extensions based on products and platforms, generating task configurations.
 
 ## Core Features
-- Flexible branch management with priority system
+- Flexible branch management with priority system 
 - Product-based extension filtering
 - Platform-specific build configurations
 - JSON task generation
@@ -16,16 +13,38 @@ System for configuring multi-platform pipeline extensions with flexible branch m
 
 ## Command Line Usage
 ```bash
-python3 extension_task_generator.py --config path/to/config.yml --platforms platform1,platform2 --product product_name --output tasks.json [options]
+# Using product filter
+python3 extension_task_generator.py \
+  --config config.yml \
+  --platforms linux,x64 \
+  --product python \
+  --output tasks.json
+
+# Using include-extensions
+python3 extension_task_generator.py \
+  --config config.yml \
+  --platforms linux,x64 \
+  --include-extensions ext1,ext2 \
+  --output tasks.json
+
+# Using both
+python3 extension_task_generator.py \
+  --config config.yml \
+  --platforms linux,x64 \
+  --product python \
+  --include-extensions ext1,ext2 \
+  --output tasks.json
 ```
 
 ### Arguments
 - `--config` [Required]: Path to YAML configuration file
 - `--platforms` [Required]: Comma-separated list of required platforms for filtering
-- `--product` [Optional]: Single product to filter by
 - `--output` [Required]: Path for generated JSON task file
-- `--include-extensions` [Optional]: Comma-separated list of extensions to include if they match platforms (ignores product filtering)
-- `--verbose` [Optional]: Enable verbose logging output showing detailed matching process
+- `--product` [Optional]: Single product to filter by
+- `--include-extensions` [Optional]: Additional extensions to include regardless of product
+- `--verbose` [Optional]: Enable verbose logging showing detailed matching process
+
+Note: Either `--product` or `--include-extensions` (or both) must be specified.
 
 ## Branch Management
 ### Priority Order
@@ -59,15 +78,15 @@ extensions:                 # [Required] Container
         platforms: [...]   # [Required] Platform requirements
 ```
 
-### Extension Products
-Product identification at extension level:
+### Products Configuration
+Product list at extension level:
 ```yaml
-products: [java, python, cpp]          # Technology stack
+products: [java, python, cpp]          # Multiple products supported
 products: [cuda, tensorflow, pytorch]   # ML/AI products
 ```
 
-### Build Platforms
-Platform requirements at build level:
+### Platform Requirements
+Platform specifications at build level:
 ```yaml
 platforms: [windows, x64]              # Windows x64 build
 platforms: [linux, x64, cuda]          # Linux CUDA build
@@ -82,7 +101,7 @@ extensions:
     id: 4
     repo: http://gitlab.my/main/pipeline_tester
     description: "Processing extension"
-    products: [python, pip]
+    products: [python, cpp, cuda]
     build_configs:
       - job_name: build-job
         platforms: [windows, x64]
@@ -149,11 +168,14 @@ DOWNLOAD_INTERNAL_EXTENSIONS=true  # Enable/disable builds
 ```
 
 ## Processing Rules
-- Without `--include-extensions`:
-  - Extension must contain specified product
+- When only `--product` is specified:
+  - Extension must contain the specified product
   - Build configuration must exactly match all specified platforms
-- With `--include-extensions`:
-  - Product filtering is ignored
-  - Only listed extensions are checked
-  - Build configuration must exactly match all specified platforms
+- When both `--product` and `--include-extensions` are specified:
+  - First, all extensions containing the product are selected
+  - Then, additional extensions from include-extensions are added
+  - All selected extensions must have build configurations exactly matching the specified platforms
+- When only `--include-extensions` is specified:
+  - Only listed extensions are processed
+  - Selected extensions must have build configurations exactly matching the specified platforms
 ```
