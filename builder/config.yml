@@ -4,7 +4,7 @@ extensions:
     id: 1
     repo: http://gitlab.example.com/cpp-ext
     description: "C++ extension"
-    products: [cpp, clang, python]  # добавлен python
+    products: [cpp, python, cmake] 
     build_configs:
       - job_name: build_windows_x64
         platforms: [windows, x64]
@@ -16,41 +16,64 @@ extensions:
     repo: http://gitlab.example.com/python-ext
     description: "Python extension"
     branch: develop
-    products: [python, pip]
+    products: [python, pip, numpy, tensorflow]  
     build_configs:
       - job_name: build_windows_x64
         platforms: [windows, x64]
       - job_name: build_linux_arm64
         platforms: [linux, arm64]
+      - job_name: build_linux_x64
+        platforms: [linux, x64]
 
   java-extension:
     id: 3
     repo: http://gitlab.example.com/java-ext
     description: "Java extension"
-    products: [java, maven, python]  # добавлен python
+    products: [java, maven, python, gradle] 
     build_configs:
-      - job_name: build_all
-        platforms: [windows, linux, x64]
+      - job_name: build_windows_x64
+        platforms: [windows, x64]
+      - job_name: build_linux_x64
+        platforms: [linux, x64]
 
   data-science-extension:
     id: 4
     repo: http://gitlab.example.com/ds-ext
     description: "Data Science extension"
-    products: [python, r, tensorflow]
+    products: [python, r, jupyter, pandas] 
     build_configs:
       - job_name: build_gpu
         platforms: [linux, x64, cuda]
       - job_name: build_cpu
         platforms: [linux, x64]
+      - job_name: build_windows
+        platforms: [windows, x64]
 
   ml-extension:
     id: 5
     repo: http://gitlab.example.com/ml-ext
     description: "Machine Learning extension"
     branch: main
-    products: [python, pytorch, cpp]  # содержит python и cpp
+    products: [python, cuda, tensorflow, pytorch]  
     build_configs:
       - job_name: build_training
         platforms: [linux, x64, cuda]
-      - job_name: build_inference
+      - job_name: build_inference_linux
+        platforms: [linux, x64]
+      - job_name: build_inference_windows
         platforms: [windows, x64]
+
+  cross-platform-extension:
+    id: 6
+    repo: http://gitlab.example.com/cross-ext
+    description: "Cross Platform extension"
+    products: [cpp, python, qt, boost]
+    build_configs:
+      - job_name: build_linux_x64
+        platforms: [linux, x64]
+      - job_name: build_linux_arm64
+        platforms: [linux, arm64]
+      - job_name: build_windows_x64
+        platforms: [windows, x64]
+      - job_name: build_windows_arm64
+        platforms: [windows, arm64]
