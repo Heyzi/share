@@ -1,3 +1,4 @@
+```python
 #!/usr/bin/env python3
 
 import argparse
@@ -355,3 +356,4 @@ Use this for debugging or to understand the selection process.''')
 
 if __name__ == '__main__':
     sys.exit(main())
+```
