@@ -12,7 +12,6 @@ from typing import Dict, List, Set, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-# Configure logging to write to stdout
 logger = logging.getLogger(__name__)
 logger.propagate = False
 handler = logging.StreamHandler(sys.stdout)
@@ -23,14 +22,12 @@ logger.setLevel(logging.INFO)
 
 @dataclass
 class DownloadTask:
-    """Task configuration for downloading an extension."""
     extension_name: str
     project_id: int
     job_name: str
     branch: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert task to dictionary format."""
         data = {
             'extension_name': self.extension_name,
             'project_id': self.project_id,
@@ -41,7 +38,6 @@ class DownloadTask:
         return data
 
     def format_info(self) -> str:
-        """Format task information as string for logging."""
         branch = self.branch.strip() if self.branch else 'default'
         return "{:<30} job: {:<15} branch: {:<20}".format(
             self.extension_name,
@@ -50,17 +46,13 @@ class DownloadTask:
         )
 
 class ExtensionConfig:
-    """Handler for loading and processing extension configuration."""
-
     def __init__(self, config_path: str):
-        """Initialize configuration handler with config file path."""
         self.config_path = Path(config_path)
         logger.debug("Loading configuration from: {}".format(self.config_path))
         self.config = self._load_config()
         self.global_branch = self._get_global_branch()
 
     def _load_config(self) -> Dict:
-        """Load and validate the YAML configuration file."""
         try:
             with open(self.config_path, encoding='utf-8') as f:
                 config = yaml.safe_load(f)
@@ -71,7 +63,6 @@ class ExtensionConfig:
             sys.exit(1)
 
     def _validate_config(self, config: Dict) -> None:
-        """Validate the configuration structure."""
         if not isinstance(config, dict):
             logger.error("Configuration must be a dictionary")
             sys.exit(1)
@@ -95,7 +86,6 @@ class ExtensionConfig:
                     sys.exit(1)
 
     def _get_global_branch(self) -> Optional[str]:
-        """Get global branch from environment or config."""
         global_branch = os.getenv('EXTENSIONS_GLOBAL_BRANCH')
 
         if global_branch:
@@ -117,7 +107,6 @@ class ExtensionConfig:
         return None
 
     def validate_branch(self, branch: str, ext_name: str) -> None:
-        """Validate GitLab branch name format."""
         if not branch or not isinstance(branch, str):
             logger.error("Invalid branch name for {}".format(ext_name))
             sys.exit(1)
@@ -142,8 +131,6 @@ class ExtensionConfig:
             sys.exit(1)
 
     def get_branch(self, ext_data: Dict[str, Any]) -> Optional[str]:
-        """Get branch name with correct priority order."""
-        # 1. Check global environment variable
         global_env_branch = os.getenv('EXTENSIONS_GLOBAL_BRANCH')
         if global_env_branch:
             global_env_branch = global_env_branch.strip()
@@ -152,12 +139,10 @@ class ExtensionConfig:
                 logger.info("Using global branch from environment: {}".format(global_env_branch))
                 return global_env_branch
 
-        # 2. Check global configuration
         if self.global_branch:
             logger.info("Using global branch from config: {}".format(self.global_branch))
             return self.global_branch
 
-        # 3. Check extension-specific environment variable
         ext_name = ext_data['name']
         env_name = "EXTENSIONS_{}_BRANCH".format(ext_name.upper())
         ext_env_branch = os.getenv(env_name)
@@ -168,7 +153,6 @@ class ExtensionConfig:
                 logger.info("Using branch from environment for {}: {}".format(ext_name, ext_env_branch))
                 return ext_env_branch
 
-        # 4. Check extension-specific configuration
         branch = ext_data.get('branch')
         if branch:
             branch = branch.strip()
@@ -181,7 +165,6 @@ class ExtensionConfig:
         return None
 
     def filter_extensions(self, platforms: Set[str], product: str, include_extensions: Optional[Set[str]] = None) -> List[Dict[str, Any]]:
-        """Filter extensions based on platforms and product criteria."""
         result = []
         include_extensions = include_extensions or set()
 
@@ -193,7 +176,6 @@ class ExtensionConfig:
             logger.info(f"Additional extensions: {', '.join(sorted(include_extensions))}")
         logger.info("=====================")
 
-        # Обработка всех расширений с указанным продуктом
         processed_extensions = set()
         if product:
             for ext_name, ext_data in self.config.get('extensions', {}).items():
@@ -205,7 +187,6 @@ class ExtensionConfig:
                     if self._check_and_add_extension(ext_name, ext_data, platforms, result):
                         processed_extensions.add(ext_name)
 
-        # Добавление расширений из include_extensions, если они еще не были добавлены
         if include_extensions:
             for ext_name, ext_data in self.config.get('extensions', {}).items():
                 if ext_name in include_extensions and ext_name not in processed_extensions:
@@ -216,7 +197,6 @@ class ExtensionConfig:
         return result
 
     def _check_and_add_extension(self, ext_name: str, ext_data: Dict, platforms: Set[str], result: List) -> bool:
-        """Check if extension matches platforms and add to results if it does."""
         logger.info("Checking build configurations:")
         for build in ext_data.get('build_configs', []):
             build_platforms = set(build.get('platforms', []))
@@ -234,7 +214,6 @@ class ExtensionConfig:
         return False
 
     def _create_extension_info(self, ext_name: str, ext_data: Dict, build: Dict) -> Dict:
-        """Create extension information dictionary."""
         info = {
             'name': ext_name,
             'id': ext_data['id'],
@@ -246,7 +225,6 @@ class ExtensionConfig:
         return info
 
 def generate_tasks(extensions: List[Dict[str, Any]]) -> List[DownloadTask]:
-    """Generate download tasks from extension configurations."""
     seen = set()
     tasks = []
 
@@ -266,20 +244,17 @@ def generate_tasks(extensions: List[Dict[str, Any]]) -> List[DownloadTask]:
     return tasks
 
 def parse_platforms(platforms_str: str) -> Set[str]:
-    """Parse comma-separated platforms string into a set."""
     if not platforms_str:
         logger.error("Platforms cannot be empty")
         sys.exit(1)
     return {p.strip() for p in platforms_str.split(',') if p.strip()}
 
 def parse_extensions(extensions_str: Optional[str]) -> Set[str]:
-    """Parse comma-separated extensions string into a set."""
-    if not extensions_str:
+    if not extensions_str or not any(e.strip() for e in extensions_str.split(',')):
         return set()
     return {e.strip() for e in extensions_str.split(',') if e.strip()}
 
 def write_tasks(path: str, tasks: List[DownloadTask]) -> None:
-    """Write tasks to JSON file."""
     data = {
         'version': '1.0',
         'generated_at': datetime.now(timezone.utc).isoformat(),
@@ -301,7 +276,6 @@ def write_tasks(path: str, tasks: List[DownloadTask]) -> None:
         sys.exit(1)
 
 def main() -> int:
-    """Main function for generating extension download tasks."""
     parser = argparse.ArgumentParser(
         description='Generate extension download tasks',
         formatter_class=argparse.RawTextHelpFormatter
@@ -313,12 +287,14 @@ def main() -> int:
     parser.add_argument('--product',
                       help='Single product to filter by (e.g., python)')
     parser.add_argument('--include-extensions',
+                      action='store',
+                      default='',
                       help='Additional extensions to include')
     parser.add_argument('--output', required=True,
                       help='Output JSON path')
     parser.add_argument('--verbose', '-v', action='store_true',
                       help='''Enable verbose logging output. Shows detailed information about:
-- Extension checking process
+- Extension checking process 
 - Platform matching details
 - Debug level messages
 - Skipped extensions and reasons
@@ -355,12 +331,14 @@ Use this for debugging or to understand the selection process.''')
         return 1
 
     include_extensions = parse_extensions(args.include_extensions)
+    product = args.product.strip() if args.product else ''
 
-    if not include_extensions and not args.product:
-        logger.error("Either --product or --include-extensions must be specified")
-        return 1
+    if not include_extensions and not product:
+        logger.info("No extensions or product specified, generating empty config")
+        write_tasks(args.output, [])
+        return 0
 
-    extensions = config.filter_extensions(platforms, args.product, include_extensions)
+    extensions = config.filter_extensions(platforms, product, include_extensions)
     if not extensions:
         logger.warning("No matching extensions found")
         write_tasks(args.output, [])
