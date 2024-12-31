@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 logger.propagate = False
 handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s',
+                                   datefmt='%Y-%m-%d %H:%M:%S'))
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
@@ -27,14 +28,22 @@ class DownloadTask:
     branch: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        data = {'extension_name': self.extension_name, 'project_id': self.project_id, 'job_name': self.job_name}
+        data = {
+            'extension_name': self.extension_name,
+            'project_id': self.project_id,
+            'job_name': self.job_name
+        }
         if self.branch:
             data['branch'] = self.branch.strip()
         return data
 
     def format_info(self) -> str:
         branch = self.branch.strip() if self.branch else 'default'
-        return "{:<30} job: {:<15} branch: {:<20}".format(self.extension_name, self.job_name, branch)
+        return "{:<30} job: {:<15} branch: {:<20}".format(
+            self.extension_name,
+            self.job_name,
+            branch
+        )
 
 class ExtensionConfig:
     def __init__(self, config_path: str):
@@ -78,6 +87,7 @@ class ExtensionConfig:
 
     def _get_global_branch(self) -> Optional[str]:
         global_branch = os.getenv('EXTENSIONS_GLOBAL_BRANCH')
+
         if global_branch:
             global_branch = global_branch.strip()
             logger.info("Using global branch from environment: {}".format(global_branch))
@@ -102,6 +112,7 @@ class ExtensionConfig:
             sys.exit(1)
 
         branch = branch.strip()
+
         if len(branch) > 255:
             logger.error("Branch name too long for {}".format(ext_name))
             sys.exit(1)
@@ -158,13 +169,13 @@ class ExtensionConfig:
             result = []
             include_extensions = include_extensions or set()
 
-            logger.info("=== Search criteria ===")
-            logger.info(f"Platforms required: {', '.join(sorted(platforms))}")
+            logger.info("\n=== Search criteria ===")
+            logger.info(f"| Required platforms: {', '.join(sorted(platforms))}")
             if product:
-                logger.info(f"Product required: {product}")
+                logger.info(f"| Product: {product}")
             if include_extensions:
-                logger.info(f"Additional extensions: {', '.join(sorted(include_extensions))}")
-            logger.info("=====================")
+                logger.info(f"| Additional extensions: {', '.join(sorted(include_extensions))}")
+            logger.info("=" * 50)
 
             processed_extensions = set()
             if product:
@@ -172,7 +183,6 @@ class ExtensionConfig:
                     ext_data['name'] = ext_name
                     ext_products = set(ext_data.get('products', []))
                     if product in ext_products:
-                        logger.info(f"\nChecking extension by product: {ext_name}")
                         if self._check_and_add_extension(ext_name, ext_data, platforms, result):
                             processed_extensions.add(ext_name)
 
@@ -180,7 +190,6 @@ class ExtensionConfig:
                 for ext_name, ext_data in self.config.get('extensions', {}).items():
                     if ext_name in include_extensions and ext_name not in processed_extensions:
                         ext_data['name'] = ext_name
-                        logger.info(f"\nChecking included extension: {ext_name}")
                         self._check_and_add_extension(ext_name, ext_data, platforms, result)
 
             return result
@@ -190,27 +199,34 @@ class ExtensionConfig:
 
     def _check_and_add_extension(self, ext_name: str, ext_data: Dict, platforms: Set[str], result: List) -> bool:
         try:
-            logger.info("Checking build configurations:")
+            logger.info(f"\nChecking extension: {ext_name}")
             for build in ext_data.get('build_configs', []):
                 build_platforms = set(build.get('platforms', []))
-                logger.info(f"  Job '{build['job_name']}' platforms: {', '.join(sorted(build_platforms))}")
-
-                if platforms & build_platforms:  # Changed to check for non-empty intersection
-                    logger.info(f"  + Platforms match!")
+                job_name = build['job_name']
+                logger.info(f"| Job: {job_name}")
+                logger.info(f"|   Available platforms: {', '.join(sorted(build_platforms))}")
+                
+                matching_platforms = platforms & build_platforms
+                if matching_platforms:
+                    logger.info(f"|   [MATCH] Found matching platforms: {', '.join(sorted(matching_platforms))}")
                     info = self._create_extension_info(ext_name, ext_data, build)
                     result.append(info)
                     return True
                 else:
-                    logger.debug(f"  - Platforms mismatch")
+                    logger.info("|   [SKIP] No matching platforms found")
 
-            logger.info(f"  - No matching build configuration found")
+            logger.info("| No matching build configuration found")
             return False
         except Exception as e:
             logger.error(f"Error checking extension {ext_name}: {e}")
             sys.exit(1)
 
     def _create_extension_info(self, ext_name: str, ext_data: Dict, build: Dict) -> Dict:
-        info = {'name': ext_name, 'id': ext_data['id'], 'job_name': build['job_name']}
+        info = {
+            'name': ext_name,
+            'id': ext_data['id'],
+            'job_name': build['job_name']
+        }
         branch = self.get_branch(ext_data)
         if branch:
             info['branch'] = branch
@@ -294,16 +310,19 @@ def main() -> int:
         if args.verbose:
             logger.setLevel(logging.DEBUG)
 
-        logger.info("Checking environment variables:")
-        for k, v in os.environ.items():
-            if k.upper().startswith('EXTENSIONS_') or k.upper() in ('GITLAB_PLATFORMS', 'DOWNLOAD_INTERNAL_EXTENSIONS'):
-                logger.info("  {}={}".format(k, v))
+        logger.info("\nEnvironment variables:")
+        env_vars = [k for k in os.environ if k.upper().startswith('EXTENSIONS_') or k.upper() in ('GITLAB_PLATFORMS', 'DOWNLOAD_INTERNAL_EXTENSIONS')]
+        if env_vars:
+            for k in env_vars:
+                logger.info(f"| {k}={os.environ[k]}")
+        else:
+            logger.info("| No relevant environment variables found")
 
         downloads_enabled = True
         for k, v in os.environ.items():
             if k.upper() == 'DOWNLOAD_INTERNAL_EXTENSIONS':
                 downloads_enabled = v.lower().strip() == 'true'
-                logger.info("Download internal extensions setting: {}".format(downloads_enabled))
+                logger.info(f"\nDownload internal extensions: {downloads_enabled}")
                 break
 
         if not downloads_enabled:
@@ -311,7 +330,7 @@ def main() -> int:
             write_tasks(args.output, [])
             return 0
 
-        logger.info("Starting task generation with config: {}".format(args.config))
+        logger.info(f"\nLoading config: {args.config}")
 
         config = ExtensionConfig(args.config)
         platforms = parse_platforms(args.platforms)
@@ -323,23 +342,19 @@ def main() -> int:
         product = args.product.strip() if args.product else ''
 
         if not include_extensions and not product:
-            logger.info("No extensions or product specified, generating empty config")
+            logger.info("\nNo extensions or product specified, generating empty config")
             write_tasks(args.output, [])
             return 0
 
         extensions = config.filter_extensions(platforms, product, include_extensions)
         if not extensions:
-            logger.warning("No matching extensions found")
+            logger.warning("\nNo matching extensions found")
             write_tasks(args.output, [])
             return 0
 
         tasks = generate_tasks(extensions)
         write_tasks(args.output, tasks)
-
-        logger.info("\nGenerated {} tasks:".format(len(tasks)))
-        for task in tasks:
-            logger.info("  - {}".format(task.format_info()))
-
+        logger.info(f"\nTotal tasks generated: {len(tasks)}")
         return 0
 
     except Exception as e:
