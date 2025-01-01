@@ -138,7 +138,7 @@ template = """<!DOCTYPE html><html><head><meta charset="utf-8"><title>GitLab Pro
 <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<style>.s{margin:20px 0;padding:20px;background:#f8f9fa;border-radius:5px}.sz{white-space:nowrap}.d{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.u{word-break:break-all}th{position:sticky;top:0;background:#fff;z-index:1}.dtf{float:right}.dtf input{width:300px}</style>
+<style>.s{margin:20px 0;padding:20px;background:#f8f9fa;border-radius:5px}.sz{white-space:nowrap}.d{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.p{word-break:break-all}th{position:sticky;top:0;background:#fff;z-index:1}.dtf{float:right}.dtf input{width:300px}</style>
 </head><body class="container-fluid"><div class="s"><h2>Projects Report - {{summary.scan_timestamp}}</h2><div class="row">
 <div class="col"><p><b>Projects:</b> {{summary.initial_project_count}}/{{summary.total_projects}}</p>
 <p><b>With CI:</b> {{summary.projects_with_ci}} ({{(summary.projects_with_ci/summary.total_projects*100)|round(1)}}%)</p></div>
@@ -146,18 +146,18 @@ template = """<!DOCTYPE html><html><head><meta charset="utf-8"><title>GitLab Pro
 <p><b>Storage Size:</b> {{format_size(summary.total_storage_size)}}</p>
 <p><b>Artifacts Size:</b> {{format_size(summary.total_artifacts_size)}}</p></div></div></div>
 <div class="table-responsive"><table id="pt" class="table table-striped table-bordered">
-<thead><tr><th>#</th><th>Group</th><th>Project</th><th>URL</th><th>Branch</th><th>Repo Size</th><th>Storage</th>
+<thead><tr><th>#</th><th>Project</th><th>Branch</th><th>Repo Size</th><th>Storage</th>
 <th>Artifacts</th><th>CI</th><th>Last Commit</th><th>Last Pipeline</th></tr></thead><tbody>
 {% for namespace, projects in results.items() %}{% for project in projects %}<tr><td>{{loop.index}}</td>
-<td>{{namespace}}</td><td>{{project.name}}</td><td class="u"><a href="{{project.url}}">{{project.url}}</a></td>
+<td class="p">{{namespace}}/{{project.name}} <a href="{{project.url}}">[link]</a></td>
 <td class="d">{{project.branch}}</td><td class="sz">{{format_size(project.sizes.repository_size)}}</td>
 <td class="sz">{{format_size(project.sizes.storage_size)}}</td>
 <td class="sz">{{format_size(project.sizes.artifacts_size)}}</td>
 <td>{{'Yes' if project.has_ci else 'No'}}</td><td class="sz">{{project.last_commit}}</td>
 <td class="sz">{{project.last_pipeline}}</td></tr>{% endfor %}{% endfor %}</tbody></table></div>
 <script>$(document).ready(function(){var t=$('#pt').DataTable({paging:false,ordering:true,info:true,search:{return:true,smart:false},
-columnDefs:[{targets:[5,6,7],type:'num',render:function(d,t){if(t==='sort')return parseFloat(d.replace(/[^0-9.]/g,''))*(d.includes('GB')?1024:1);return d;}},
-{targets:[9,10],type:'date'}]});$('.dtf input').attr('placeholder','Global Search...');});</script></body></html>"""
+columnDefs:[{targets:[3,4,5],type:'num',render:function(d,t){if(t==='sort')return parseFloat(d.replace(/[^0-9.]/g,''))*(d.includes('GB')?1024:1);return d;}},
+{targets:[7,8],type:'date'}]});$('.dtf input').attr('placeholder','Global Search...');});</script></body></html>"""
 
 def generate_report(projects: Dict[str, List[Dict]], summary: Dict[str, int], output_base: str):
     try:
