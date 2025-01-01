@@ -75,15 +75,40 @@ class GitLabScanner:
            logger.error(f"Error getting last pipeline for project {project_id}: {str(e)}")
            return 'N/A'
    
+   def get_initial_project_count(self, group_id: int) -> int:
+       try:
+           group = self.gl.groups.get(group_id)
+           count = 0
+           page = 1
+           while True:
+               projects = group.projects.list(page=page, per_page=100)
+               if not projects:
+                   break
+               count += len(projects)
+               page += 1
+           
+           subgroups = group.subgroups.list(all=True)
+           for subgroup in subgroups:
+               count += self.get_initial_project_count(subgroup.id)
+           
+           return count
+       except Exception as e:
+           logger.error(f"Error getting initial project count: {str(e)}")
+           return 0
+           
    def scan_group(self, group_id: int) -> Tuple[Dict[str, List[Dict]], Dict[str, int]]:
-       logger.info(f"Scanning group {group_id}")
+       initial_count = self.get_initial_project_count(group_id)
+       logger.info(f"Initial project count: {initial_count}")
+       
        results = {}
        summary = {
            'total_projects': 0,
            'total_repo_size': 0,
            'total_storage_size': 0,
            'total_artifacts_size': 0,
-           'projects_with_ci': 0
+           'projects_with_ci': 0,
+           'initial_project_count': initial_count,
+           'scan_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
        }
        
        try:
@@ -151,6 +176,11 @@ class GitLabScanner:
            
        return results, summary
 
+def format_size(size_bytes: int) -> str:
+   gb = size_bytes / (1024 * 1024 * 1024)
+   mb = size_bytes / (1024 * 1024)
+   return f"{gb:.2f} GB" if gb >= 1 else f"{mb:.2f} MB"
+
 def generate_html_report(results: Dict[str, List[Dict]], summary: Dict[str, int], output_file: str = 'report.html'):
    template = """
    <!DOCTYPE html>
@@ -194,21 +224,32 @@ def generate_html_report(results: Dict[str, List[Dict]], summary: Dict[str, int]
                background-color: #f8f9fa;
                border-radius: 5px;
            }
+           tfoot input {
+               width: 100%;
+               padding: 3px;
+               box-sizing: border-box;
+           }
+           .filter-header {
+               font-weight: bold;
+               margin-bottom: 5px;
+           }
        </style>
    </head>
    <body class="container-fluid">
        <div class="summary-card">
-           <h2>Summary</h2>
+           <h2>Scan Summary</h2>
            <div class="row">
                <div class="col">
-                   <p><strong>Total Projects:</strong> {{ summary.total_projects }}</p>
+                   <p><strong>Scan Time:</strong> {{ summary.scan_timestamp }}</p>
+                   <p><strong>Initial Project Count:</strong> {{ summary.initial_project_count }}</p>
+                   <p><strong>Final Project Count:</strong> {{ summary.total_projects }}</p>
                    <p><strong>Projects with CI:</strong> {{ summary.projects_with_ci }} 
-                      ({{ (summary.projects_with_ci / summary.total_projects * 100) | round(1) }}%)</p>
+                       ({{ (summary.projects_with_ci / summary.total_projects * 100) | round(1) }}%)</p>
                </div>
                <div class="col">
-                   <p><strong>Total Repository Size:</strong> {{ (summary.total_repo_size / 1024 / 1024) | round(2) }} MB</p>
-                   <p><strong>Total Storage Size:</strong> {{ (summary.total_storage_size / 1024 / 1024) | round(2) }} MB</p>
-                   <p><strong>Total Artifacts Size:</strong> {{ (summary.total_artifacts_size / 1024 / 1024) | round(2) }} MB</p>
+                   <p><strong>Total Repository Size:</strong> {{ format_size(summary.total_repo_size) }}</p>
+                   <p><strong>Total Storage Size:</strong> {{ format_size(summary.total_storage_size) }}</p>
+                   <p><strong>Total Artifacts Size:</strong> {{ format_size(summary.total_artifacts_size) }}</p>
                </div>
            </div>
        </div>
@@ -221,6 +262,7 @@ def generate_html_report(results: Dict[str, List[Dict]], summary: Dict[str, int]
                    <table class="table table-striped table-bordered" data-namespace="{{ namespace }}">
                        <thead>
                            <tr>
+                               <th>#</th>
                                <th>Project</th>
                                <th>Default Branch</th>
                                <th>Repository Size</th>
@@ -231,14 +273,28 @@ def generate_html_report(results: Dict[str, List[Dict]], summary: Dict[str, int]
                                <th>Last Pipeline</th>
                            </tr>
                        </thead>
+                       <tfoot>
+                           <tr>
+                               <th>#</th>
+                               <th>Project</th>
+                               <th>Default Branch</th>
+                               <th>Repository Size</th>
+                               <th>Storage Size</th>
+                               <th>Artifacts Size</th>
+                               <th>CI Config</th>
+                               <th>Last Commit</th>
+                               <th>Last Pipeline</th>
+                           </tr>
+                       </tfoot>
                        <tbody>
                            {% for project in projects %}
                            <tr>
+                               <td>{{ loop.index }}</td>
                                <td><a href="{{ project.url }}">{{ project.name }}</a></td>
                                <td>{{ project.default_branch }}</td>
-                               <td class="size-cell">{{ (project.sizes.repository_size / 1024 / 1024) | round(2) }} MB</td>
-                               <td class="size-cell">{{ (project.sizes.storage_size / 1024 / 1024) | round(2) }} MB</td>
-                               <td class="size-cell">{{ (project.sizes.artifacts_size / 1024 / 1024) | round(2) }} MB</td>
+                               <td class="size-cell">{{ format_size(project.sizes.repository_size) }}</td>
+                               <td class="size-cell">{{ format_size(project.sizes.storage_size) }}</td>
+                               <td class="size-cell">{{ format_size(project.sizes.artifacts_size) }}</td>
                                <td>{{ 'Yes' if project.has_ci else 'No' }}</td>
                                <td class="date-cell">{{ project.last_commit }}</td>
                                <td class="date-cell">{{ project.last_pipeline }}</td>
@@ -253,13 +309,50 @@ def generate_html_report(results: Dict[str, List[Dict]], summary: Dict[str, int]
        
        <script>
        document.addEventListener('DOMContentLoaded', function() {
-           document.querySelectorAll('table').forEach(table => {
-               if (!$.fn.DataTable.isDataTable(table)) {
-                   $(table).DataTable({
-                       "pageLength": 25,
-                       "order": [[0, "asc"]]
-                   });
-               }
+           let tables = document.querySelectorAll('table');
+           tables.forEach(table => {
+               $(table).DataTable({
+                   "paging": false,
+                   "ordering": true,
+                   "info": true,
+                   "initComplete": function () {
+                       this.api().columns().every(function () {
+                           let column = this;
+                           let title = $(column.footer()).text();
+                           $('<input type="text" placeholder="Filter ' + title + '" />')
+                               .appendTo($(column.footer()).empty())
+                               .on('keyup change', function () {
+                                   if (column.search() !== this.value) {
+                                       column
+                                           .search(this.value)
+                                           .draw();
+                                   }
+                               });
+                       });
+                   },
+                   "columnDefs": [
+                       {
+                           "targets": [3, 4, 5], // Size columns
+                           "render": function(data, type, row) {
+                               if (type === 'sort') {
+                                   // Extract numeric value for sorting
+                                   let value = parseFloat(data.replace(/[^0-9.]/g, ''));
+                                   return data.includes('GB') ? value * 1024 : value;
+                               }
+                               return data;
+                           }
+                       }
+                   ]
+               });
+           });
+
+           // Add toggle functionality for group headers
+           document.querySelectorAll('.group-header').forEach(header => {
+               header.addEventListener('click', function() {
+                   let content = this.nextElementSibling;
+                   content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                   this.classList.toggle('collapsed');
+               });
            });
        });
        </script>
@@ -267,30 +360,74 @@ def generate_html_report(results: Dict[str, List[Dict]], summary: Dict[str, int]
    </html>
    """
    
-   logger.info("Generating HTML report")
    env = jinja2.Environment()
+   env.filters['format_size'] = format_size
    template = env.from_string(template)
-   html = template.render(results=results, summary=summary)
+   html = template.render(results=results, summary=summary, format_size=format_size)
    
-   if sys.platform == 'win32':
+if sys.platform == 'win32':
        with open(output_file, 'w', encoding='utf-8-sig') as f:
            f.write(html)
    else:
        with open(output_file, 'w', encoding='utf-8') as f:
            f.write(html)
            
-   logger.info(f"Report saved to {output_file}")
+   logger.info(f"HTML report saved to {output_file}")
+
+def generate_csv_report(results: Dict[str, List[Dict]], summary: Dict[str, int], output_file: str = 'report.csv'):
+   import csv
+   
+   logger.info("Generating CSV report")
+   with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
+       writer = csv.writer(f)
+       writer.writerow(['Scan Time', summary['scan_timestamp']])
+       writer.writerow(['Initial Project Count', summary['initial_project_count']])
+       writer.writerow(['Final Project Count', summary['total_projects']])
+       writer.writerow(['Projects with CI', f"{summary['projects_with_ci']} ({(summary['projects_with_ci'] / summary['total_projects'] * 100):.1f}%)"])
+       writer.writerow(['Total Repository Size', format_size(summary['total_repo_size'])])
+       writer.writerow(['Total Storage Size', format_size(summary['total_storage_size'])])
+       writer.writerow(['Total Artifacts Size', format_size(summary['total_artifacts_size'])])
+       writer.writerow([])
+       
+       writer.writerow(['#', 'Namespace', 'Project', 'URL', 'Default Branch', 
+                       'Repository Size', 'Storage Size', 'Artifacts Size',
+                       'CI Config', 'Last Commit', 'Last Pipeline'])
+       
+       index = 1
+       for namespace, projects in results.items():
+           for project in projects:
+               writer.writerow([
+                   index,
+                   namespace,
+                   project['name'],
+                   project['url'],
+                   project['default_branch'],
+                   format_size(project['sizes']['repository_size']),
+                   format_size(project['sizes']['storage_size']),
+                   format_size(project['sizes']['artifacts_size']),
+                   'Yes' if project['has_ci'] else 'No',
+                   project['last_commit'],
+                   project['last_pipeline']
+               ])
+               index += 1
+   
+   logger.info(f"CSV report saved to {output_file}")
 
 def main():
    parser = argparse.ArgumentParser(description='Generate GitLab projects report')
    parser.add_argument('--token', required=True, help='GitLab API token')
    parser.add_argument('--group-id', type=int, required=True, help='GitLab group ID to scan')
    parser.add_argument('--gitlab-url', default='https://gitlab.com', help='GitLab instance URL')
+   parser.add_argument('--format', choices=['html', 'csv', 'both'], default='both', help='Output format')
    args = parser.parse_args()
 
    scanner = GitLabScanner(args.token, args.gitlab_url)
    results, summary = scanner.scan_group(args.group_id)
-   generate_html_report(results, summary)
+   
+   if args.format in ['html', 'both']:
+       generate_html_report(results, summary)
+   if args.format in ['csv', 'both']:
+       generate_csv_report(results, summary)
 
 if __name__ == '__main__':
    main()
