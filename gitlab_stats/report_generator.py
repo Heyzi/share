@@ -1,5 +1,5 @@
 import gitlab, argparse, logging, sys, csv, jinja2
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -9,6 +9,7 @@ class GitLabScanner:
    def __init__(self, token: str, url: str):
        logger.info(f"Connecting to GitLab instance: {url}")
        self.gl = gitlab.Gitlab(url, private_token=token, per_page=100)
+       self.unique_projects: Set[str] = set()
    
    def get_default_branch(self, project_id: int) -> str:
        try:
@@ -57,11 +58,13 @@ class GitLabScanner:
            return 'N/A'
            
    def scan_group(self, group_id: int) -> Tuple[Dict[str, List[Dict]], Dict[str, int]]:
-       initial_count = 0
        results = {}
        summary = {
-           'total_projects': 0, 'total_repo_size': 0, 'total_storage_size': 0,
-           'total_artifacts_size': 0, 'projects_with_ci': 0,
+           'total_projects': 0,
+           'total_repo_size': 0,
+           'total_storage_size': 0,
+           'total_artifacts_size': 0,
+           'projects_with_ci': 0,
            'scan_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
        }
        
@@ -72,9 +75,12 @@ class GitLabScanner:
                projects = group.projects.list(page=page, per_page=100, get_all=True)
                if not projects:
                    break
-               initial_count += len(projects)
                    
                for project in projects:
+                   if project.web_url in self.unique_projects:
+                       continue
+                   self.unique_projects.add(project.web_url)
+                   
                    logger.info(f"Processing project: {project.name}")
                    namespace = project.namespace['full_path']
                    if namespace not in results:
@@ -115,15 +121,12 @@ class GitLabScanner:
                    sub_results, sub_summary = self.scan_group(subgroup.id)
                    results.update(sub_results)
                    
-                   for key in ['total_projects', 'total_repo_size', 'total_storage_size', 
+                   for key in ['total_repo_size', 'total_storage_size', 
                               'total_artifacts_size', 'projects_with_ci']:
                        summary[key] += sub_summary[key]
-                   initial_count += sub_summary.get('initial_project_count', 0)
                        
                page += 1
 
-           summary['initial_project_count'] = initial_count
-               
        except Exception as e:
            logger.error(f"Error scanning group {group_id}: {str(e)}")
            
@@ -159,7 +162,7 @@ td{vertical-align:middle !important;padding:12px !important}
 tr:hover .p a{opacity:1}
 </style>
 </head><body class="container-fluid py-4"><div class="s"><h2>Projects Report - {{summary.scan_timestamp}}</h2><div class="row">
-<div class="col"><p><b>Projects:</b> {{summary.initial_project_count}}/{{summary.total_projects}}</p>
+<div class="col"><p><b>Projects:</b> {{summary.total_projects}}</p>
 <p><b>With CI:</b> {{summary.projects_with_ci}} ({{(summary.projects_with_ci/summary.total_projects*100)|round(1)}}%)</p></div>
 <div class="col"><p><b>Repo Size:</b> {{format_size(summary.total_repo_size)}}</p>
 <p><b>Storage Size:</b> {{format_size(summary.total_storage_size)}}</p>
@@ -167,13 +170,14 @@ tr:hover .p a{opacity:1}
 <div class="table-responsive"><table id="pt" class="table table-striped">
 <thead><tr><th>#</th><th>Project</th><th>Branch</th><th>Repo Size</th><th>Storage</th>
 <th>Artifacts</th><th>CI</th><th>Last Commit</th><th>Last Pipeline</th></tr></thead><tbody>
-{% for namespace, projects in results.items() %}{% for project in projects %}<tr><td>{{loop.index}}</td>
+{%- set ns = namespace(index=1) -%}
+{% for namespace, projects in results.items() %}{% for project in projects %}<tr><td>{{ns.index}}</td>
 <td class="p"><a href="{{project.url}}">{{namespace}}/{{project.name}}</a></td>
 <td class="d">{{project.branch}}</td><td class="sz">{{format_size(project.sizes.repository_size)}}</td>
 <td class="sz">{{format_size(project.sizes.storage_size)}}</td>
 <td class="sz">{{format_size(project.sizes.artifacts_size)}}</td>
 <td>{{ 'Yes' if project.has_ci else 'No' }}</td><td class="sz">{{project.last_commit}}</td>
-<td class="sz">{{project.last_pipeline}}</td></tr>{% endfor %}{% endfor %}</tbody></table></div>
+<td class="sz">{{project.last_pipeline}}</td></tr>{% set ns.index = ns.index + 1 %}{% endfor %}{% endfor %}</tbody></table></div>
 <script>$(document).ready(function(){var t=$('#pt').DataTable({paging:false,ordering:true,info:true,search:{return:true,smart:false},
 columnDefs:[{targets:[3,4,5],type:'num',render:function(d,t){if(t==='sort')return parseFloat(d.replace(/[^0-9.]/g,''))*(d.includes('GB')?1024:1);return d;}},
 {targets:[7,8],type:'date'}]});$('.dtf input').attr('placeholder','Global Search...').addClass('form-control');});</script></body></html>"""
@@ -189,7 +193,7 @@ def generate_report(projects: Dict[str, List[Dict]], summary: Dict[str, int], ou
        with open(f"{output_base}.csv", 'w', newline='', encoding='utf-8-sig' if sys.platform == 'win32' else 'utf-8') as f:
            writer = csv.writer(f)
            writer.writerow(['Scan Time', summary['scan_timestamp']])
-           writer.writerow(['Initial/Final Projects', f"{summary['initial_project_count']}/{summary['total_projects']}"])
+           writer.writerow(['Total Projects', summary['total_projects']])
            writer.writerow(['Total Repository Size', format_size(summary['total_repo_size'])])
            writer.writerow(['Total Storage Size', format_size(summary['total_storage_size'])])
            writer.writerow(['Total Artifacts Size', format_size(summary['total_artifacts_size'])])
