@@ -3,10 +3,19 @@ import argparse
 from typing import Dict, List
 import jinja2
 from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(
+   level=logging.INFO,
+   format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class GitLabScanner:
    def __init__(self, token: str, url: str):
        """Initialize GitLab connection."""
+       logger.info(f"Connecting to GitLab instance: {url}")
        self.gl = gitlab.Gitlab(url, private_token=token)
    
    def get_default_branch(self, project_id: int) -> str:
@@ -15,12 +24,13 @@ class GitLabScanner:
            project = self.gl.projects.get(project_id)
            return project.default_branch or 'master'
        except Exception as e:
-           print(f"Error getting default branch for project {project_id}: {str(e)}")
+           logger.error(f"Error getting default branch for project {project_id}: {str(e)}")
            return 'master'
    
    def get_project_size(self, project_id: int) -> Dict[str, int]:
        """Get project size statistics including repository, storage and artifacts sizes."""
        try:
+           logger.debug(f"Getting size statistics for project {project_id}")
            project = self.gl.projects.get(project_id, statistics=True)
            stats = project.statistics
            return {
@@ -29,7 +39,7 @@ class GitLabScanner:
                'artifacts_size': stats.get('job_artifacts_size', 0)
            }
        except Exception as e:
-           print(f"Error getting size for project {project_id}: {str(e)}")
+           logger.error(f"Error getting size for project {project_id}: {str(e)}")
            return {
                'repository_size': 0,
                'storage_size': 0,
@@ -48,54 +58,65 @@ class GitLabScanner:
    def get_last_commit_date(self, project_id: int, default_branch: str) -> str:
        """Get date of the most recent commit."""
        try:
+           logger.debug(f"Getting last commit for project {project_id}")
            project = self.gl.projects.get(project_id)
-           most_recent_commit = project.commits.list(per_page=1)
-           if most_recent_commit and len(most_recent_commit) > 0:
-               return most_recent_commit[0].committed_date.split('.')[0].replace('T', ' ')
+           commits = project.commits.list(per_page=1)
+           if commits and len(commits) > 0:
+               return commits[0].committed_date.split('.')[0].replace('T', ' ')
            return 'N/A'
        except Exception as e:
-           print(f"Error getting last commit for project {project_id}: {str(e)}")
+           logger.error(f"Error getting last commit for project {project_id}: {str(e)}")
            return 'N/A'
 
    def get_last_pipeline_date(self, project_id: int) -> str:
        """Get date of the most recent pipeline."""
        try:
+           logger.debug(f"Getting last pipeline for project {project_id}")
            project = self.gl.projects.get(project_id)
            pipelines = project.pipelines.list(per_page=1)
            if pipelines and len(pipelines) > 0:
                return pipelines[0].created_at.split('.')[0].replace('T', ' ')
            return 'N/A'
        except Exception as e:
-           print(f"Error getting last pipeline for project {project_id}: {str(e)}")
+           logger.error(f"Error getting last pipeline for project {project_id}: {str(e)}")
            return 'N/A'
    
    def scan_group(self, group_id: int) -> Dict[str, List[Dict]]:
        """Recursively scan group and its subgroups for projects information."""
+       logger.info(f"Scanning group {group_id}")
        results = {}
-       group = self.gl.groups.get(group_id)
-       
-       # Scan projects in current group
-       for project in group.projects.list(all=True, get_all=True):
-           namespace = project.namespace['full_path']
-           if namespace not in results:
-               results[namespace] = []
-               
-           default_branch = self.get_default_branch(project.id)
-           project_info = {
-               'url': project.web_url,
-               'name': project.name,
-               'default_branch': default_branch,
-               'sizes': self.get_project_size(project.id),
-               'has_ci': self.has_ci_file(project.id, default_branch),
-               'last_commit': self.get_last_commit_date(project.id, default_branch),
-               'last_pipeline': self.get_last_pipeline_date(project.id)
-           }
-           results[namespace].append(project_info)
+       try:
+           group = self.gl.groups.get(group_id)
            
-       # Recursively scan subgroups
-       for subgroup in group.subgroups.list(all=True, get_all=True):
-           sub_results = self.scan_group(subgroup.id)
-           results.update(sub_results)
+           # Scan projects in current group
+           logger.info(f"Getting projects for group {group_id}")
+           for project in group.projects.list(get_all=True):
+               logger.info(f"Processing project: {project.name}")
+               namespace = project.namespace['full_path']
+               if namespace not in results:
+                   results[namespace] = []
+                   
+               default_branch = self.get_default_branch(project.id)
+               project_info = {
+                   'url': project.web_url,
+                   'name': project.name,
+                   'default_branch': default_branch,
+                   'sizes': self.get_project_size(project.id),
+                   'has_ci': self.has_ci_file(project.id, default_branch),
+                   'last_commit': self.get_last_commit_date(project.id, default_branch),
+                   'last_pipeline': self.get_last_pipeline_date(project.id)
+               }
+               results[namespace].append(project_info)
+               
+           # Recursively scan subgroups
+           logger.info(f"Getting subgroups for group {group_id}")
+           for subgroup in group.subgroups.list(get_all=True):
+               logger.info(f"Scanning subgroup: {subgroup.name}")
+               sub_results = self.scan_group(subgroup.id)
+               results.update(sub_results)
+               
+       except Exception as e:
+           logger.error(f"Error scanning group {group_id}: {str(e)}")
            
        return results
 
@@ -125,9 +146,6 @@ def generate_html_report(results: Dict[str, List[Dict]], output_file: str = 'rep
                content: '▼';
                margin-right: 10px;
                transition: transform 0.3s;
-           }
-           .group-header.collapsed::before {
-               transform: rotate(-90deg);
            }
            .group-content {
                margin-left: 20px;
@@ -192,26 +210,19 @@ def generate_html_report(results: Dict[str, List[Dict]], output_file: str = 'rep
                }
            });
        });
-
-       // Group toggling functionality
-       document.querySelectorAll('.group-header').forEach(header => {
-           header.addEventListener('click', function() {
-               this.classList.toggle('collapsed');
-               const content = this.nextElementSibling;
-               content.style.display = content.style.display === 'none' ? 'block' : 'none';
-           });
-       });
        </script>
    </body>
    </html>
    """
    
+   logger.info("Generating HTML report")
    env = jinja2.Environment()
    template = env.from_string(template)
    html = template.render(results=results)
    
-   with open(output_file, 'w') as f:
+   with open(output_file, 'w', encoding='utf-8') as f:
        f.write(html)
+   logger.info(f"Report saved to {output_file}")
 
 def main():
    """Main function to run the GitLab scanner."""
