@@ -12,16 +12,25 @@ class GitLabScanner:
     
     def get_project_info(self, project_id: int, project, namespace: str) -> Dict:
         try:
-            stats = self.gl.projects.get(project_id, statistics=True).statistics
-            default_branch = project.default_branch or 'master'
-            has_ci = bool(project.files.get('.gitlab-ci.yml', ref=default_branch))
-            commits = project.commits.list(page=1, per_page=1)
-            pipelines = project.pipelines.list(page=1, per_page=1)
+            # Получаем полный объект проекта
+            full_project = self.gl.projects.get(project_id)
+            stats = full_project.statistics  
+            default_branch = full_project.default_branch or 'master'
+            
+            # Проверяем наличие CI файла
+            try:
+                full_project.files.get('.gitlab-ci.yml', ref=default_branch)
+                has_ci = True
+            except:
+                has_ci = False
+                
+            commits = full_project.commits.list(page=1, per_page=1)
+            pipelines = full_project.pipelines.list(page=1, per_page=1)
             
             return {
                 'namespace': namespace,
-                'name': project.name,
-                'url': project.web_url,
+                'name': full_project.name,
+                'url': full_project.web_url,
                 'branch': default_branch,
                 'repository_size': stats.get('repository_size', 0),
                 'storage_size': stats.get('storage_size', 0),
