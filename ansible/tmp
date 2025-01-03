@@ -1,0 +1,39 @@
+---
+- name: "Clear old facts"
+ meta: clear_facts
+
+- name: "Configure system users and SSH"
+ block:
+   - name: "Create ansible user"
+     user:
+       name: ansible
+       state: present
+       groups: sudo
+       shell: /bin/bash
+
+   - name: "Add SSH public key for ansible user"
+     authorized_key:
+       user: ansible
+       key: "{{ ansible_ssh_public_key }}"
+       state: present
+
+   - name: "Disable root SSH login"
+     lineinfile:
+       path: /etc/ssh/sshd_config
+       regexp: '^PermitRootLogin'
+       line: 'PermitRootLogin no'
+       state: present
+     notify: restart sshd
+
+ become: true
+ ignore_errors: true
+ ignore_unreachable: true
+ vars:
+   ansible_ssh_user: root
+   ansible_ssh_pass: "{{ root_password }}"
+
+ handlers:
+   - name: restart sshd
+     service:
+       name: sshd
+       state: restarted
