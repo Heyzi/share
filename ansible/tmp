@@ -25,15 +25,13 @@
        state: present
      notify: restart sshd
 
- become: true
- ignore_errors: true
- ignore_unreachable: true
- vars:
-   ansible_ssh_user: root
-   ansible_ssh_pass: "{{ root_password }}"
-
- handlers:
    - name: restart sshd
      service:
        name: sshd
        state: restarted
+
+ become: true
+ vars:
+   ansible_ssh_user: root
+   ansible_ssh_pass: "{{ root_password }}"
+
