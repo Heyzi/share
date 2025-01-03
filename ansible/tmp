@@ -1,37 +1,42 @@
----
 - name: "Clear old facts"
- meta: clear_facts
+  meta: clear_facts
 
 - name: "Configure system users and SSH"
- block:
-   - name: "Create ansible user"
-     user:
-       name: ansible
-       state: present
-       groups: sudo
-       shell: /bin/bash
+  block:
+    - name: "Create ansible user"
+      ansible.builtin.user:
+        name: ansible
+        state: present
+        groups: sudo
+        shell: /bin/bash
 
-   - name: "Add SSH public key for ansible user"
-     authorized_key:
-       user: ansible
-       key: "{{ ansible_ssh_public_key }}"
-       state: present
+    - name: "Configure sudoers for ansible user"
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/ansible
+        line: "ansible ALL=(ALL) NOPASSWD: ALL"
+        create: yes
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
 
-   - name: "Disable root SSH login"
-     lineinfile:
-       path: /etc/ssh/sshd_config
-       regexp: '^PermitRootLogin'
-       line: 'PermitRootLogin no'
-       state: present
-     notify: restart sshd
+    - name: "Add SSH public key"
+      ansible.builtin.authorized_key:
+        user: ansible
+        key: "{{ ansible_ssh_public_key }}"
+        state: present
 
-   - name: restart sshd
-     service:
-       name: sshd
-       state: restarted
+    - name: "Disable root SSH login"
+      ansible.posix.sshd_config:
+        key: PermitRootLogin
+        value: "no"
+      notify: restart sshd
 
- become: true
- vars:
-   ansible_ssh_user: root
-   ansible_ssh_pass: "{{ root_password }}"
+  handlers:
+    - name: restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
 
+  become: true
+  vars:
+    ansible_ssh_user: root
+    ansible_ssh_pass: "{{ root_password }}"
