@@ -1,0 +1,5 @@
+---
+- include_tasks: user_revocation.yml
+  loop: "{{ item.sudoers_hosts }}"
+  loop_control:
+   loop_var: target_group

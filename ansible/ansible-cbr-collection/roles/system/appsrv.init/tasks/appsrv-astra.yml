@@ -1,0 +1,79 @@
+#
+- name: "Удаление старых фактов"
+  meta: clear_facts
+
+- name: "Изменение стандартного пароля пользователя"
+  block:
+    - name: "Смена пароля для пользователя user"
+      user:
+        name: user
+        update_password: always
+        password: "{{ astra_user_new_password | password_hash('sha512') }}"
+  become: true
+  ignore_errors: true
+  ignore_unreachable: true
+  vars:
+    ansible_ssh_user: user
+    ansible_ssh_pass: "{{ astra_user_first_login_password }}"
+    ansible_become_pass: "{{ astra_user_first_login_password }}"
+
+- name: "Сброс ssh соединения для подключения с новым паролем"
+  meta: reset_connection
+
+- name: "Создание пользователя {{ ehd_system_user }} и добавление в sudoers"
+  block:
+    - name: "Создание группы {{ ehd_system_user }}"
+      group:
+        name: "{{ ehd_system_user }}"
+        gid: 1060
+        state: present
+
+    - name: "Создание пользователя {{ ehd_system_user }}"
+      user:
+        name: "{{ ehd_system_user }}"
+        group: "{{ ehd_system_user }}"
+        groups: "{{ ehd_system_user }}"
+        uid: 1060
+        shell: /bin/bash
+        password: "!"
+        update_password: on_create
+        password_expire_min: 0
+        password_expire_max: 99999
+
+    - name: "Добавление {{ ehd_system_user }} в sudoers"
+      community.general.sudoers:
+        name: "{{ ehd_system_user }}"
+        state: present
+        user: "{{ ehd_system_user }}"
+        runas: "ALL"
+        commands: "ALL"
+        nopassword: yes
+  become: true
+  become_user: "root"
+  vars:
+    ansible_ssh_user: user
+    ansible_ssh_pass: "{{ astra_user_new_password }}"
+    ansible_become_pass: "{{ astra_user_new_password }}"
+
+- name: "Добавление ssh ключей"
+  block:
+    - name: "Создание каталога .ssh"
+      file:
+        path: "/home/appsrv/.ssh"
+        state: directory
+        mode: '0700'
+
+    - name: "Добавление публичных ключей пользователю: {{ ehd_system_user }}"
+      authorized_key:
+        user: "{{ ehd_system_user }}"
+        key: "{{ item }}"
+        state: present
+      loop: "{{ keys.active_keys | map(attribute='pubkeys') | flatten }}"
+      loop_control:
+        label: "{{ item }}"
+  become: true
+  become_user: "appsrv"
+  vars:
+    ansible_ssh_user: user
+    ansible_ssh_pass: "{{ astra_user_new_password }}"
+    ansible_become_pass: "{{ astra_user_new_password }}"

@@ -1,0 +1,5 @@
+vendors:
+  - username: testuser
+    pubkeys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCaEjjpVeEKP+2/ybwIQIUGjEeIchn9y/xfAd9+Ir1DuGRU6f7I2lDfAy693QeCzcOWQQENhDP7TUj3TjBpKvmDApNqrMzQnDladdxc9eUIDAW/E3zK99JeCvPwtt4Yed6E1xhcFaUWCRmbVlN5DuwW+QjpNYvM160+Wuig2zVJg83HAtqtdFyneuYw1zZ/26MY32npn/33u3TyE6Fc9LPzx7yTWhK06/XAJ7kdwK/Lv6vCC9i9IiT/H9DffP1E8HFlAikIltoKJRIsaJ0eOrwyniSXANiaDLRXGrMibvAyxNuqMAqSk+DVqnrYVGXBcomxSKllfAQiFunK5JPOSE0D rsa-key-20230621
+    sudoers_hosts: ['test_group']

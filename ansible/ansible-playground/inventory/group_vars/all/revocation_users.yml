@@ -1,0 +1,6 @@
+revocations:
+  - username: test
+    pubkeys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCUw2/48ec+moPVnJMHBaMF5ZmEFaacqtZnXUN93+8/JdWsVjZoKTaZBwu2aRhysVRvEsexkLSgExPiEUJl8irtfHDIOHvBOlsJezzGxastwpBUdrILtuK81hZ1b6HgrXqQ5uk0hDXVaX1uIGoOImqSL9j4SJUpIyeD5H+ugBNrWOQ8kCnvpxb1CT/2clczkQki+J0Ny7Va2aRDmr4nUniF0mlXdrQU0pohIO+yzrYnqDqBuMtAmTGnz6RSBYFiF3FBCkLkUjTyUdVdYKypKC95Jab9AYeu1UzFauAJcqOQB5KzPFZ5+OrfROdhiYpwdLYi/H/XrEweEjXMqV2dURrRlT83G2HzqZxquc/AL50yP4xY9DLjPi4uOjQhrGJwQTLmsbdevCyXUkvRCrO7P9nMIdj0Iiqf9J6gkx5L0uHTeOZtnLX1b9ZtvMIvFzInKgo6XaQwWqruSgAj2bfYbgv3r/XUh031CISmZYoc+fdASrONUfLSnM8O8UyK2hAwm80= cher@pgprot14
+    sudoers_hosts: ['postgrespro']
+

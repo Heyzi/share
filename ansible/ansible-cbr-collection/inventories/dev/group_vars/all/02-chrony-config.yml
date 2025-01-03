@@ -1,0 +1,2 @@
+chrony_ntp_pools:
+  - url

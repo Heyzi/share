@@ -1,0 +1,65 @@
+---
+- name: "Проверка, что ehd_system_user определена"
+  assert:
+    that:
+      - ehd_system_user is defined
+    fail_msg: "Переменная ehd_system_user не определена"
+    success_msg: "Переменная ehd_system_user определена"
+
+- name: "Проверка, что ehd_system_user является строкой"
+  assert:
+    that:
+      - ehd_system_user is string
+    fail_msg: "Переменная ehd_system_user не является строкой"
+    success_msg: "Переменная ehd_system_user является строкой"
+
+- name: "Проверка, что переменная keys определена"
+  assert:
+    that:
+      - keys is defined
+    fail_msg: "Переменная keys не определена"
+    success_msg: "Переменная keys определена"
+
+- name: "Проверка, что keys.active_keys является списком"
+  assert:
+    that:
+      - keys.active_keys is defined
+      - keys.active_keys | type_debug == 'list'
+    fail_msg: "keys.active_keys не определена или не является списком"
+    success_msg: "keys.active_keys определена и является списком"
+
+- name: "Проверка, что keys.revoked_keys является списком"
+  assert:
+    that:
+      - keys.revoked_keys is defined
+      - keys.revoked_keys | type_debug == 'list'
+    fail_msg: "keys.revoked_keys не определена или не является списком"
+    success_msg: "keys.revoked_keys определена и является списком"
+
+- name: "Получение ключей из active_keys"
+  set_fact:
+    all_active_pubkeys: "{{ all_active_pubkeys | default([]) + item.pubkeys }}"
+  loop: "{{ keys.active_keys }}"
+  when: item.pubkeys is defined
+  no_log: true
+
+- name: "Получение ключей из revoked_keys"
+  set_fact:
+    all_revoked_pubkeys: "{{ all_revoked_pubkeys | default([]) + item.pubkeys }}"
+  loop: "{{ keys.revoked_keys }}"
+  when: item.pubkeys is defined
+  no_log: true
+
+- name: "Объединение публичны ключей в один список"
+  set_fact:
+    all_pubkeys: "{{ all_active_pubkeys + all_revoked_pubkeys }}"
+
+- name: "Валидация публичных ключей"
+  assert:
+    that:
+      - "item | regex_search('^ssh-(rsa|dss|ed25519) [A-Za-z0-9+/=]+(?: .+)?$') is not none"
+    fail_msg: "Найден недействительный SSH публичный ключ: {{ item }}"
+    success_msg: "Публичный ключ валидный"
+  loop: "{{ all_pubkeys }}"
+  loop_control:
+    label: "{{ item }}"

@@ -1,0 +1,8 @@
+---
+- name: "Смена пароля appsrv на RHEL"
+  include_tasks: appsrv-rhel7.yml
+  when: "'rh7_all' in group_names" # Мы не можем использовать факты, тк еще не можем подключиться к ВМ, чтобы их собрать
+
+- name: "Смена пароля appsrv на Astra Linux"
+  include_tasks: appsrv-astra.yml
+  when: "'astra_all' in group_names"

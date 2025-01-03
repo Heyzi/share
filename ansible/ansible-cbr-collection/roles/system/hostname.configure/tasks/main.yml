@@ -1,0 +1,16 @@
+---
+- name: "Импорт задачи валидации"
+  ansible.builtin.import_tasks:
+    file: preflight.yml
+  run_once: true
+  delegate_to: localhost
+
+- name: "Изменение имени сервера"
+  become: true
+  ansible.builtin.hostname:
+    name: "{{ hostname }}"
+  notify:
+    - reboot
+    - get_facts
+  when:
+    - ansible_connection not in [ "container", "docker", "community.docker.docker" ]

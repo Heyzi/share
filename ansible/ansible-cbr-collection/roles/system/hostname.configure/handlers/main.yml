@@ -1,0 +1,9 @@
+- name: "Перезагрузка"
+  ansible.builtin.reboot:
+  listen: "reboot"
+  when:
+    - hostname_reboot
+
+- name: "Повторный сбор фактов"
+  listen: "get_facts"
+  ansible.builtin.setup:

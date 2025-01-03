@@ -1,0 +1,7 @@
+file_store/
+.idea/
+.vagrant/
+Vagrantfile
+.DS_Store
+.ansible
+.vscode

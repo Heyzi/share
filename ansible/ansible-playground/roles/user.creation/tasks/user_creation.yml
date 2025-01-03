@@ -1,0 +1,28 @@
+- name: "{{item.username}}: adding to sudoers"
+  lineinfile:
+    path: /etc/sudoers.d/admins
+    line: '{{ item.username}} ALL=(ALL)       NOPASSWD:ALL'
+    create: 'yes'
+  when: (target_group in group_names or target_group == "all") and (item.sudo is undefined or item.sudo == "true")
+
+- name: "{{item.username}}: removing from sudoers"
+  lineinfile:
+    path: /etc/sudoers.d/admins
+    line: '{{ item.username}} ALL=(ALL)       NOPASSWD:ALL'
+    state: absent
+  when: (target_group in group_names or target_group == "all") and (item.sudo is defined and item.sudo == "false")
+
+- name: "{{item.username}}: user creation"
+  user:
+    name: '{{ item.username }}'
+    shell: /bin/bash
+  when: target_group in group_names or target_group == "all"
+
+- name: "{{item.username}}: set authorized keys"
+  authorized_key:
+    user: '{{item.username}}'
+    state: present
+    key: "{{ item.pubkeys | join('\n') }}"
+    path: '/home/{{item.username}}/.ssh/authorized_keys'
+  when: target_group in group_names or target_group == "all"
+

@@ -1,0 +1,8 @@
+#выключаем пользователя, не удаляем
+- name: "{{item.username}}: user disabling"
+  user:
+    name: '{{ item.username }}'
+    state: present
+    password_lock: true
+    shell: "/sbin/nologin"
+  when: target_group in group_names or target_group == "all"

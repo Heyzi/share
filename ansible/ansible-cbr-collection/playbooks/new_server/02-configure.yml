@@ -1,0 +1,7 @@
+---
+- hosts: linux_all
+  gather_facts: True
+  roles:
+    - system/hostname.configure
+    #   - system/repos.configure
+    - system/chrony.configure

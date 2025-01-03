@@ -1,0 +1,6 @@
+#########
+users:
+   - username: test
+     pubkeys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC5xfujEziegOh6spsWAV+JX3B3KsBqtqPblIfUPUv07BJH/AI+Lo34L8FEfQwb8/X4eCcGoc86ylb/glBr1+28R9qB/KkbMF5dT3jHTmYEUox4sI+1YqhQjSTFUoMTvLXJqnIAF7lBbuCxsnwldUv38y5bdqzWY2A3/DhPpwovbvi0bNe5fsSO1eq5hEX0wNko4+FInaC4X9xS2JdefK5+6kxp98xtnj15QQBnOHKivStv/fK0f0E1p7GTjc9WwPWsW4BwmRAlZArIn7xSWxTHPrFIgtaohqTn4rnL6lKOUGRmmVxlON0rsYliBjCYGLMiGlJK5Oiq1ySS4PFcNVQd+TE8htyyJa1XSVN0R0z7w1HS9V2G7RuLAMeGEwAdy3H4jpZeBSJfBb8qL+0QyBCrCKALM/nDj4rC6nda3Jm+6WlJSprtIP0PgBk/EnIOOcmQfJ59ktDZuPdYdjOOqtkXsoN/5y3QsZso6gp/fJBt/YdS8lRKN/vG7FlfG3Tfl4E= lir@LIR-PC
+     sudoers_hosts: ["all"]

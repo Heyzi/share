@@ -1,0 +1,15 @@
+---
+- name: "Проверка переменной hostname"
+  ansible.builtin.assert:
+    that:
+      - hostname is defined
+      - hostname is string
+      - hostname is not none
+    quiet: true
+
+- name: "Проверка переменной hostname_reboot"
+  ansible.builtin.assert:
+    that:
+      - hostname_reboot is defined
+      - hostname_reboot is boolean
+    quiet: true

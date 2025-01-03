@@ -1,0 +1,34 @@
+#############################
+#     публичные ключи       #
+#############################
+ehd_system_user: appsrv
+keys:
+  active_keys:
+    - username: "appsrv"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCtYQKmj3+GiXOM1en1WIArJuuTVtcOnd/dbrSGbyaBI30WrckOR1XBBGfuu3n5E92GhKOX0JnetwjJbdAprNY1qlP4bsgHfij/JnzsAh5UnhbOncsO99LcRlqRtlX2Zay5I59AGDAtY1QKswLhgxjeP5gb3F5USS2Io2pWB5TLzCgIgXTWzVXk4lQngsdFP5gC3D6gwoWoBCMkn12PzzJh7sDDy+S6E/lvgAjobOOAa8IyCt3b2cw/2GkSMQ8a9ue/9Uat0Doov9iZ3Ri0OWyYgjd9JDb4rGF/iHnpWkokyWfErFe4V+wjwL8Mzw/hmw4QdHiJHmLHT4Yx/6CNLQBt appsrv@sehdcicd-id01"
+    - username: "jenkins"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDLOFk/0s772eumfHfI4JfqdTWSe7thtfVrscj+a1HCbcYDopYvjr3XC7idRC1eyTZit2tJ3GPZxzKFc6lRqY0CPzIYznqieoy3vsfLzeP08DH70cqCcWqXSHf12m14jXCRa3qrw4SW77uwigrLW8ruRKVAtFaFZaaBRpSWZYzWtVTzBwHXMB4uXnYK270UAvQEa/LauOGEgYYrzDt3w9S2mMyd7AqsqasR8EfUsE0b9KTX4vGADI/An9DCi92tY8Vy7tF8zjd+sufGMLWcCeHpSminn3dXa6fz7o9bAdRpwCL+j5RWVWT+stWyEnN7IyUr+eU5S4dMskr/47IM3MrKYOiGeh4g8jq3RdF0Sl90L9evxD/AVYQ8v6Wl7YKPa5U0OeVWCgGnbJn2w+F19+JICwQEgcgis3WRW85eY/YSEyjKewTKjwHkNx+4rnDosYTIIf8lgotpIK6uVbytBPN5boswZg+azC6Wr8KGmZI+mmr/+B4owk4mZvCoN2RFTfUldBMYSFa0ZySvWIm+FwQZPgAWLDRqfviHSLdoM1NlDkp8IerkpodwS3NJUo3jM9282FDEvELgf3zr/J5Kyt/2zRLOdA+4SNieMvrg4bQunopxvN3UGefpEhpo5RfNzbej7p1dnRL/SLjrQ9psEEZhdeTnT9GnkN5fjStikJ86LQ== jenkins@sehdcicd-id01"
+    - username: "kovalenkoan"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDEFrxCLh3I/Or/qal0jkNmwQAKkFwJ/SDlNDDfjKfb5rjNPYUO3VqxWe2TvAPlL24ogh9P9C0LTiUScPviRz03JwVJkHawI+NLIZEWGjqFhFDGe9VizBRAh06jG3PP4Yu9u2o3svWM5p07g+d7RE0RYEPhI6My1nYE1sM5HshHy0Ur8pTfHlbD6PeGvkuzbezAgpKBzEVV5oXusA2zIuxeIFcM7j89KvuGxcj/xowBsA8EZtj6mtuuMph9iE1K+5p1IATXO2ySthfpT3MI3INLTFd6vb25GVpyvEE4YglgH/Cd4I0hSpMQuQo0Ph7sePJyJUZcfOKUIWCJOHxGdHx lir@LAPTOP-V2K669LN"
+    - username: "platonovaa"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDX7vwwrLxDkQYYI92w0+L0TLq0Jwo8VpVGbCZY3YJZtzmAvqlUtasKANLfXZKmStlF/dhCnEnsPVkCarUd/Outir3dMU3EKz5oo6LA/BUVIY8suXoDmJ6AUaeHlWvKteMz2g6S9QMAa6CfloG0dhrltE+RLTCAFixqpi8mbPU44iZcN7RJTVT0gyw4DDYqE6rnYRGBYtRCWX0MC0qpmWkVNKQKdmHPvmRgKQjqASt/v0pr+/NXCGwyYUb03A7N4dOR+MBTe8t27s60gwggQZ8vCPdTIstKWumz0lCeVBUwxD47738NIVVP0XiqUHxfAlKWgBgmddTLNgP+oB/NZ8k44J5VnIIoG1Hhb2AAYDguc3sdX9fWGoPdXHyxvCygh8ZhigKEKB7UQFZlJcwEuXX3bVt0dW3XLkrmgPwbDdW6XwpHe0BXdceqxtLNwgUWDHy1r1xOwj8nuLiEG7S6GQZo+XUmH6BA3fmQO/psR5V+Aly+JgudvGEpe7OGEBN5Yhk= platonovaa@mba-heyzi.local"
+    - username: "pronkinua"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDr38Y3uoRWNF03KBCxs8tQbgMTyyWEc76GDM4zmMRKUFFIPqi6nX692/enFSzHS5PnKGBkj04nJ7yQQLBzIVbdAxQow70Lvuwf911R0SO3N7EibRmllsRXk5kKSDxwZDsV8/H1d2sZ4NWdUQW4zwOg+Z7ffm1pVlKZ1YwJq9v5S/qwaDqwIID5+pKAAwYGj4tuVT3uLeQOFg+SklcfQXUO4+DMh+aaeisGa7u43VZHwDRs3wGCBeUNnph2U+exS9C4m7OWLwgQ9xd9haOfz+jSU8WSuJEIa9zB9wCjEF9OdkSFT/N+ZuunyYA4T61l05gOak4AXEPrLZ1t+2gqJIuJ pronkinua@96978.ip-ns.net"
+    - username: "danilovsyu"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDKx5v4/3q1xs621u+Ifwzmp/SUsCMqo/VguKF9a3pY2Gpn17DGp9hm+GgRWBzaIzu09AXNBUB733ZGuwuZ8lTFT1WSPL6QbCNiAk3+zuxJi7UXlWFPXhpV5H+Y4Ud0Cm/MWl4y8mHN3uncgbsxlBItrKbTDqxNihLTt5UrQAxtuIBjdI2VLsiuiO+qw48fKf0VLFUJXIzeCru2hQO+CwL9V64K/VmttTqOMsYLOHyx3LQOmI+WIEmQJMEt4Bhc/N5ABtl6KolCDilz9XjqvY01/Dr3mFMSjPusoFUVP9IqZKUITKPcGU3xdPATO6bGA9+FjSekgOE5aMvSR/td2k+BEOISSMDMrAvXGFzY5VeYw993Zz2OAgtjvVvugYT/xczM5+cg43GbsSSP7xeziGbjHLMWMGWjF6KQczhR3a6OWArKQhfiyWBpZDCLJwpPI3ykkKtM/XBsA3y2/0sqZNzpXODyQCXqxxNNNfSKlhcsrv+MSEZ+egLn+3rnRW9/Ae8= 40danilovsyu@D40-1020177.region.cbr.ru"
+
+  revoked_keys:
+    - username: "apmatupa@cbr"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDWUGaCu9PV6pfavo9lKNOnTJ0eRh2p4qUsbb7b54Ms/VRSbwGfoLiHCCj8pzlxm+02N81iGAkah9rL8bFu2GM2PvClHnTFlopyNhOuP9AdClc1+PBOorXjIoueSpSOZs3fNmsdskdH2CNU4T6DXnpSj3of9rr0SvNjsoq26lv+jFokUW+Ji5J67c/HLYQHSA32t7Xb5/SwamTkgkTKmmLO4FDcaV8NlwraKNM/YNKuarlrr9L9IJmXLzzRlnZzNqPvVer0VXbqcioUirtRVmNKY3fdig6PewI3fa14Ca7lwAW3yzQrpW4S2qQ82+E+ugkHN2txxK9aXV2Qs7HaMOf0YUP9G9ahN3+3ArDa+EXR7RhHJva0iTqnAXf0HKD0iUSpz70JJQGXqLLFyaHLAe08XrIeGrsXgQkqXZlfW2l/zT0SRd8/xpHbTGUorbHnz09WKrmNM8z6ImA32BDU8UFX0WTrucbGVUEeXSxzg623g7tSABxoC0JMdsWNwyCAhGs= apmatupa@cbr"
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDex97PjdTDO+a8XJuHHYpq6pLoi4fv83vrO6vCrS7sYN2ooogFTitgINgnrHr7dLW9LUbG+m8WJ3B96W1AjsLE0yJecVIWA2uikJYXx8Of3hJcY/iiL+DWPaDSF3A0vZnV8pz8dUxn34COo5TTZs7ZLDlkmiwQjnkf5GRyQCV6IstAqKX5efYS7SXgiFg3a1VJO8Cv3OBhWmHf9vdYCclmXLFWbsIa7VAdvhxBTH5po/+ko6AxQafITCe9pdDk3+WnjkpxaEYcpQgnSw4RkQqUplJwbKfFDzb9XMpH7WeFNw50PYHq6NdUy4fkbiFYVQQx9Sl++qWSoqktYyBQ/40NLuEi96U47aJWVtabsJigAoO1fMn3qIJXKCiHY8rf+Xpvwl+x0E1bAJto31vSusgNx/K9oJaL5PKTzZggWNVl2xiSllNhPhgEdOTAxdpDIvwbp1BdQr6x6u+3gIA4pRGtvUEngVUdI0CNJvZF7IiYwua1sDJ4Rs1wttSNjY8rWhE= apmatupa@home"
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCy+6FwK6UvTwp+JwCDMibvgh8xYvTXtIbZK8FrVccXp4xfrOG2QuepmsgfO/XSNR2fAC/DTZ1sKPHv/aei+tlhbyUo0wJmZr8xOn82sefA5xv0tNTklMRspuoDZu09+2o4eKERgZjqg5LMPWaWWEOmCsGsC+91m6DHUzvQm55aK+vARYOvu7WkYHQirE1wGgsCDTZ3B3S0SV2mgpRCcdRQFoyYXx9We/MfsH6xlceqO7S90ytGfSFA5DHvtkHvN/7e+aHlfRoVHYrRFJnr2Z2TOrZYbysfJKkQa1mz92pGVYQpjtPLYh5oumd4APFbZjLZ7C3ZcaXxmiSPno5U17zAlnBTCWdNVbmuJYa9OmyCktGqFG0HHrlsSkyJT4/GtgHwjSnApkO2HZf2Bii2ufJfuUvXZCSbDomMAEGIWwI2pEKnVjFCKqi6y1yDpc/vkPXBdEEooeB4R+AsVKqQYCdOUSBHcEFkW0perpTIMefX/Wsn8z8d4JtnPKCzZnTsGfM= apmatupa@kali"
+    - username: "40streltsovdv"
+      pubkeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC10TCjA1nzetBXzvlI943wv0VSh0HO0xktDhT3uTRY8FkXIwhQMLbD6C1DmQ6egnoez4zIYEnAe2IQRVdAkJQQSe21RBsSrRbsXWF1IyVbPz//BLIX994Pv4I4eykaqD1bTyMKcXeRNr1slcelS/hd5DcCi1GeiKAQtHazH0H83xYqY0q3mkxyyH7h10p5v9ixIH8Bimh5MSX8/wzyEvV759jd6c1Y2M3Crc4PbCum3NUV/nqeDz7Gxz/NqKazTLC0/AhAPNd8CepEsmoC9i+T9Xuwsuh3M+Ukv7shYaYQPSg02XVKJn8LrrnT7+xrDPXQGORIymgBe/rfWDKdzuChLHfGe2MYzLx9pMuUG3VlfDlzM43DZgNeNC9h+bulz0o1RlkuG4DBQDKkmVwtbZ4jg0XwKxChHR4cJObHuMmQIGNWt+9heXEzLNI5voHubr7zktqNBNUHwDQQ4B1sMISdrVA0uKyLJHAyPNz9f7YN9YjSSZLN6OGwbd2isc244zxrVo9usstqmO0Pu92kgJQkRY4tO0eJGg4LGqK8B1aqQOGw4JWZubkDQ11hImg3PRC6EyufYUDxC06+GtaTaWjCGEfGV+e3+5Bv3n0LFNFo+KpAAehpNe/U+WHtGG/zLciYaUTB6bVq7ABIJKUDIzwhi4b382LhXz3Dg5KwDdPf/w== 40streltsovdv@region.cbr.ru"

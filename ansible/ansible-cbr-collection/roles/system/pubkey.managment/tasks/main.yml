@@ -1,0 +1,8 @@
+---
+- name: "Валидация переменных"
+  include_tasks: preflight.yml
+
+- name: "Управление публичными ключами"
+  block:
+    - include_tasks: pubkey_deploy.yml
+    - include_tasks: pubkey_revoke.yml

@@ -1,0 +1,9 @@
+---
+- name: "Добавление публичных ключей пользователю: {{ ehd_system_user }}"
+  authorized_key:
+    user: "{{ ehd_system_user }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ keys.active_keys | map(attribute='pubkeys') | flatten }}"
+  loop_control:
+    label: "{{ item }}"

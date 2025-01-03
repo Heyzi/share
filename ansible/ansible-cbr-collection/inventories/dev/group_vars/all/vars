@@ -1,0 +1,38 @@
+#####
+#4monitoring
+loki_web_api: http://logging.ehd-zr.cbr.ru/loki/api/v1/push
+#nexus
+nexus_host: sehdbin-id01.portal.cbr.ru
+nexus_port: 8081
+nexus_url: "http://{{ nexus_host }}:{{ nexus_port }}"
+
+#users (ssh)
+appsrv_user: appsrv
+appsrv_group: "{{ appsrv_user }}"
+
+#sssd groups:
+#стандартные группы доступа к хосту (sssd)
+default_simple_allow_groups: 
+      - "EHD{{ PREF_ZONE }}SU-OS-Linux-AIBs"
+      - "EHD{{ PREF_ZONE }}SU-OS-Linux-Admins"
+      - "EHD{{ PREF_ZONE }}SU-ControllersIB"
+      - "EHD{{ PREF_ZONE }}SU-NSRADM"
+      - "EHD{{ PREF_ZONE }}SU-CICD-Engs"
+      - "EHD{{ PREF_ZONE }}SU-CICD-Admins"
+      - "EHD{{ PREF_ZONE }}SU-CICD-NSRADM"
+
+#дополнительные группы доступа к хосту (sssd)
+custom_simple_allow_groups: []
+
+#sssd vars
+PREF_ZONE: "D"
+pref_zone: "d"
+zone: zr
+
+ad_servers: 
+ - "portal.cbr.ru"
+ - "vip.cbr.ru"
+ - "region.cbr.ru"
+
+ad_port: 3268
+ldap_bind_dn: "svc-ehd{{ pref_zone }}-{{ inventory_hostname[4:9] | split('-') | first }}{{ inventory_hostname[-2:] }}-dc@portal.cbr.ru"

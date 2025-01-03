@@ -1,0 +1,22 @@
+- hosts: all
+  remote_user: appsrv
+  gather_facts: False
+  become: true
+  tasks:
+#создаем УЗ вендоров
+    - name: "Vendors users creation"
+      include_role: 
+        name: user.creation
+      loop: "{{ vendors | list}}"
+
+#создаем УЗ наших сотрудников
+    - name: "Internal users creation"
+      include_role:
+        name: user.creation
+      loop: "{{ users | list}}"
+
+#отзываем доступ у УЗ из списка
+    - name: "Users revocation"
+      include_role:
+        name: user.revocation
+      loop: "{{ revocations | list}}"

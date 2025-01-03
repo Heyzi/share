@@ -1,0 +1,6 @@
+---
+- hosts: linux_all
+  gather_facts: False
+  roles:
+    - system/appsrv.init
+    - system/pubkey.managment

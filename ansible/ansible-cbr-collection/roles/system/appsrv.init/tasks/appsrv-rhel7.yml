@@ -1,0 +1,70 @@
+- name: "Удаление старых фактов"
+  meta: clear_facts
+
+# Меняем первичный пароль на удаленной машине
+# Проблема в принудительной смене пароля при подключении. После смены  ssh !!не рвет соединение - нужен таймаут!!. Поэтому такой failed_when
+# Плей не зависимо от результата всегда будет успешным.
+- name: "Смена стандартного пароля пользователя appsrv (Попытка #1)"
+  delegate_to: 127.0.0.1
+  expect:
+    command: ssh  -o StrictHostKeyChecking=no root@{{ ansible_host }}
+    timeout: 5
+    responses:
+      "password:":
+        - "{{ root_first_login_password }}"
+        - "{{ root_first_login_password }}"
+        - "{{ root_new_password }}"
+        - "{{ root_new_password }}"
+      "\\~\\]\\$": exit
+  ignore_errors: true
+  register: result
+  no_log: True
+  failed_when:
+     - result.rc == 0
+
+- name: "Сброс ssh соединения для подключения с новым паролем"
+  meta: reset_connection
+
+#небольшой костыль, в образе ОС, у root пользователя может быть бессрочный пароль
+#failed - игнорируем, это норма
+- name: "Смена стандартного пароля пользователя root (Попытка #2)"
+  delegate_to: 127.0.0.1
+  command: sshpass -p "{{ root_first_login_password }}" ssh  -o StrictHostKeyChecking=no root@{{ ansible_host }} "echo root:'{{ root_new_password }}' | chpasswd"
+  timeout: 5
+  ignore_errors: true
+  no_log: True
+  #failed_when:
+  #  - result.rc == 0
+
+- name: "Создание пользования appsrv"
+  delegate_to: 127.0.0.1
+  timeout: 5
+  command: sshpass -p "{{ root_new_password }}" ssh  -o StrictHostKeyChecking=no  root@{{ ansible_host }} "groupadd -g 1060 {{ ehd_system_user }}; useradd -rm -N -u 1060 {{ ehd_system_user }} -g {{ ehd_system_user }};chage -I -1 -m 0 -M 99999 -E -1 {{ ehd_system_user }}"
+  register: userstatus
+  no_log: True
+  # failed_when:
+  #   - userstatus.rc != 0
+
+- name: "Загрузка публичной части ssh ключа для appsrv"
+  delegate_to: 127.0.0.1
+  timeout: 5
+  no_log: True
+  command: sshpass -p "{{ root_new_password }}" ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} "mkdir -p /home/{{ ehd_system_user }}/.ssh; echo "{{ system_public_key.appsrv.pubkey|d() }}" > /home/{{ ehd_system_user }}/.ssh/authorized_keys"
+
+- name: "Загрузка публичной части ssh ключа от Jenkins для appsrv"
+  delegate_to: 127.0.0.1
+  timeout: 5
+  no_log: True
+  command: sshpass -p "{{ root_new_password }}" ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} "mkdir -p /home/{{ ehd_system_user }}/.ssh; echo "{{ system_public_key.jenkins.pubkey|d() }}" >> /home/{{ ehd_system_user }}/.ssh/authorized_keys"
+
+- name: "Исправление прав на каталог .ssh"
+  delegate_to: 127.0.0.1
+  timeout: 5
+  no_log: True
+  command: sshpass -p "{{ root_new_password }}" ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} "chown {{ ehd_system_user }} -R /home/{{ ehd_system_user }}/.ssh "
+
+- name: "Добавление appsrv в sudoers"
+  delegate_to: 127.0.0.1
+  timeout: 5
+  no_log: True
+  command: sshpass -p "{{ root_new_password }}" ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} "echo 'appsrv ALL=(ALL)       NOPASSWD:ALL' > /etc/sudoers.d/ehd_system_user"
