@@ -1,22 +1,71 @@
-- hosts: all
-  remote_user: appsrv
-  gather_facts: False
-  become: true
-  tasks:
-#создаем УЗ вендоров
-    - name: "Vendors users creation"
-      include_role: 
-        name: user.creation
-      loop: "{{ vendors | list}}"
+# roles/user.creation/tasks/main.yml
+- name: Check existing groups on host
+  ansible.builtin.shell: getent group | cut -d: -f1
+  register: existing_groups
+  changed_when: false
+  check_mode: false
 
-#создаем УЗ наших сотрудников
-    - name: "Internal users creation"
-      include_role:
-        name: user.creation
-      loop: "{{ users | list}}"
+- name: Manage user access and permissions
+  block:
+   - name: Validate SSH public keys format
+     ansible.builtin.assert:
+       that:
+         - item.pubkeys | length > 0
+         - item.pubkeys is sequence
+         - item.pubkeys | select('match', '^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)\s+[A-Za-z0-9+/]+[=]{0,3}(\s+.*)?$') | list | length == item.pubkeys | length
+       fail_msg: "Invalid SSH public key format for user {{ item.username }}"
+       success_msg: "SSH keys validated for user {{ item.username }}"
 
-#отзываем доступ у УЗ из списка
-    - name: "Users revocation"
-      include_role:
-        name: user.revocation
-      loop: "{{ revocations | list}}"
+   - name: Warn about non-existent groups
+     ansible.builtin.debug:
+       msg: "Warning: Group {{ group_item }} doesn't exist for user {{ item.username }}"
+     when: group_item not in existing_groups.stdout_lines
+     loop: "{{ item.additional_groups | default([]) }}"
+     loop_control:
+       loop_var: group_item
+
+   - name: Create admin group
+     ansible.builtin.group:
+       name: admins
+       state: present
+
+   - name: "{{ item.username }}: Manage sudoers entry"
+     ansible.builtin.lineinfile:
+       path: /etc/sudoers.d/admins
+       line: '{{ item.username }} ALL=(ALL) NOPASSWD:ALL'
+       create: true
+       mode: '0440'
+       validate: '/usr/sbin/visudo -cf %s'
+       state: "{{ 'present' if (item.sudo is undefined or item.sudo == 'true') else 'absent' }}"
+
+   - name: "{{ item.username }}: Create user"
+     ansible.builtin.user:
+       name: "{{ item.username }}"
+       shell: /bin/bash
+       create_home: true
+       state: present
+       groups: "{{ ['admins'] + (item.additional_groups | default([]) | select('in', existing_groups.stdout_lines) | list) }}"
+       append: true
+       password_lock: true
+
+   - name: "{{ item.username }}: Create .ssh directory"
+     ansible.builtin.file:
+       path: "/home/{{ item.username }}/.ssh"
+       state: directory
+       mode: '0700'
+       owner: "{{ item.username }}"
+       group: "{{ item.username }}"
+
+   - name: "{{ item.username }}: Configure SSH authorized keys"
+     ansible.builtin.authorized_key:
+       user: "{{ item.username }}"
+       state: present
+       key: "{{ item.pubkeys | join('\n') }}"
+       exclusive: true
+       manage_dir: true
+
+ when: target_group in group_names or target_group == "all"
+ become: true
+ tags:
+   - users
+   - security
