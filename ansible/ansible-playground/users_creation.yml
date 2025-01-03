@@ -67,6 +67,4 @@
             exclusive: true
             manage_dir: true
       when: item.state | default('present') == 'present'
-
-  when: target_group in group_names or target_group == "all"
   become: true
