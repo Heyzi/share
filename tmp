@@ -1,27 +1,23 @@
-https://github.com/VictoriaMetrics/helm-charts/blob/master/hack/rules-and-dashboards/dashboards/vector.json
-```mermaid
-graph LR
-    subgraph inscode
-    A[inscode] --> B[HC]
-    B --> C[Windows]
-    B --> D[Linux]
-    B --> E[macOS]
-    end
-    
-    subgraph Python
-    F[Python] --> G[HC]
-    F --> H[HW]
-    G --> I[Linux]
-    G --> J[Windows]
-    H --> K[Windows]
-    end
-    
-    subgraph Java
-    L[Java] --> M[HC]
-    L --> N[HCS]
-    L --> O[HW]
-    M --> P[Linux/Windows]
-    N --> Q[Linux/Windows]
-    O --> R[Linux/Windows]
-    end
-```
+[Unit]
+Description=GitLab Activity Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=gitlab-exporter
+Group=gitlab-exporter
+ExecStart=/usr/local/bin/gitlab-activity-exporter
+Restart=always
+RestartSec=10s
+
+# Безопасность
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+# Limits
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
