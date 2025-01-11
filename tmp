@@ -1,23 +1,26 @@
-[Unit]
-Description=GitLab Activity Exporter
-After=network.target
+# GitLab API Configuration
+gitlab:
+ api_url: "http://192.168.1.111:8888/api/v4"
+ token: "glpat-"  # Use environment variable
+ timeout: 30s             # API request timeout
 
-[Service]
-Type=simple
-User=gitlab-exporter
-Group=gitlab-exporter
-ExecStart=/usr/local/bin/gitlab-activity-exporter
-Restart=always
-RestartSec=10s
+# Projects Configuration
+projects:
 
-# Безопасность
-NoNewPrivileges=true
-ProtectSystem=full
-ProtectHome=true
-PrivateTmp=true
-
-# Limits
-LimitNOFILE=4096
-
-[Install]
-WantedBy=multi-user.target
+ # Group-based project discovery
+ groups:
+   # Development projects group
+   - path: "main"
+     recursive: true    # Include subgroups
+# Exporter Configuration
+# Prometheus exporter configuration
+exporter:
+  # HTTP server port (default: 9199)
+  port: 9199
+  # Metrics endpoint path (default: /metrics)
+  metrics_path: "/metrics"
+  # How often to collect metrics (default: 30s)
+  collection_interval: 5m
+  # Log level: debug, info, warn, error (default: info)
+  log_level: "json"
+  host: "0.0.0.0"
